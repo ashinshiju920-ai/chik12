@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #C85A32;
+    --primary-hover: #B34E2A;
+    --jet-charcoal: #1F1F1F;
+    --trust-bg: #0C2B2F;
+    --cream-bg: #F9F8F6;
+    --accent-red: #D32F2F;
+    --star-gold: #FBC02D;
+  }
+
+  body {
+    font-family: 'Outfit', 'DM Sans', sans-serif;
+    background-color: #F9F8F6;
+    color: #1F1F1F;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-heading {
+    letter-spacing: -0.015em;
+  }
+}
+
+.font-brand {
+  font-family: 'Bodoni Moda', 'Cormorant Garamond', 'Playfair Display', Didot, 'Bodoni MT', Georgia, serif;
+}
+
+.font-display {
+  font-family: 'Bodoni Moda', 'Playfair Display', Georgia, serif;
+}
+
+.font-editorial {
+  font-family: 'Cormorant Garamond', 'Bodoni Moda', 'Playfair Display', Georgia, serif;
+}
+
+.font-italiana {
+  font-family: 'Italiana', 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-modern {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+}
+
+.font-accent {
+  font-family: 'Syne', sans-serif;
+}
+
+.font-sans-clean {
+  font-family: 'DM Sans', 'Outfit', sans-serif;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F0EC;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4CEBE;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C85A32;
+}
+
