@@ -1,0 +1,8 @@
+{
+  "name": "Diva'Chik Luxury Boutique",
+  "description": "High-fashion minimalist modern lifestyle and couture boutique for Diva'Chik, featuring bespoke catalog, direct checkout, interactive styling, reviews, and client portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
