@@ -305,7 +305,13 @@ export const ProductDetailView: React.FC = () => {
 
             {/* Title & Tagline */}
             <div>
-              <h1 className="text-2xl sm:text-3xl font-semibold text-[#1F1F1F] font-editorial leading-snug">
+              <h1 
+                style={{
+                  fontFamily: selectedProduct.customFont || undefined,
+                  fontSize: selectedProduct.customFontSize || undefined
+                }}
+                className="product-title font-product text-2xl sm:text-3xl font-semibold text-[#1F1F1F] leading-snug"
+              >
                 {selectedProduct.name}
               </h1>
               {selectedProduct.tagline && (
@@ -488,12 +494,15 @@ export const ProductDetailView: React.FC = () => {
                 </button>
               </div>
 
-              {/* Buy Now Button (Instant Checkout) */}
+              {/* Buy Now Button (Instant Checkout) with Real-Time Custom Color */}
               {!selectedProduct.isSoldOut && (
                 <button
                   id="pdp-buy-now-button"
                   onClick={handleBuyNow}
-                  className="w-full bg-[#DC2626] hover:bg-[#B91C1C] active:bg-[#991B1B] text-white text-xs font-semibold tracking-wider uppercase h-12 rounded-xs transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-[0_2px_10px_rgba(220,38,38,0.25)] hover:shadow-[0_4px_16px_rgba(220,38,38,0.35)] active:scale-[0.99]"
+                  style={{
+                    backgroundColor: selectedProduct.buyNowButtonColor || undefined
+                  }}
+                  className="w-full btn-buynow text-white text-xs font-semibold tracking-wider uppercase h-12 rounded-xs transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-[0_2px_10px_rgba(220,38,38,0.25)] hover:shadow-[0_4px_16px_rgba(220,38,38,0.35)] active:scale-[0.99]"
                 >
                   <Zap className="w-4 h-4 fill-white text-white" />
                   <span>Buy Now (Instant Checkout)</span>

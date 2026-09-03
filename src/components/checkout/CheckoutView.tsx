@@ -254,10 +254,23 @@ export const CheckoutView: React.FC = () => {
                 'Cash on Delivery (COD)';
 
     placeOrder({
+      customer: {
+        fullName: fullName || 'Valued Customer',
+        email: email || currentUser?.email || 'customer@gmail.com',
+        phone: phone || '+1 (555) 000-0000',
+        addressLine1: street,
+        addressLine2: apartment,
+        city,
+        state,
+        postalCode: pincode
+      },
+      customerName: fullName || 'Valued Customer',
+      email: email || currentUser?.email || 'customer@gmail.com',
       shippingAddress,
       shippingFee,
       tax: finalTax,
       total: finalGrandTotal,
+      totalAmount: finalGrandTotal,
       paymentMethod: paymentLabel
     });
   };
@@ -266,7 +279,7 @@ export const CheckoutView: React.FC = () => {
   useEffect(() => {
     if (isConfirmation && currentOrder) {
       const waUrl = `https://wa.me/message/XAACO6O6PPIDL1?text=${encodeURIComponent(
-        `Hello Diva'Chik Studio, I just placed Order #${currentOrder.orderNumber} for total ${formatPrice(currentOrder.total)}. Please confirm my order dispatch!`
+        `Hello DivaChic Studio, I just placed Order #${currentOrder.orderNumber} for total ${formatPrice(currentOrder.total)}. Please confirm my order dispatch!`
       )}`;
 
       const timer = setTimeout(() => {
@@ -280,7 +293,7 @@ export const CheckoutView: React.FC = () => {
   // ORDER CONFIRMATION SCREEN
   if (isConfirmation && currentOrder) {
     const whatsappLink = `https://wa.me/message/XAACO6O6PPIDL1?text=${encodeURIComponent(
-      `Hello Diva'Chik Studio, I just placed Order #${currentOrder.orderNumber} for total ${formatPrice(currentOrder.total)}. Please confirm my order dispatch!`
+      `Hello DivaChic Studio, I just placed Order #${currentOrder.orderNumber} for total ${formatPrice(currentOrder.total)}. Please confirm my order dispatch!`
     )}`;
 
     return (
@@ -492,12 +505,12 @@ export const CheckoutView: React.FC = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-2xl sm:text-3xl font-semibold text-[#1F1F1F] font-editorial">
-              Diva'Chik Express Checkout
+              DivaChic Express Checkout
             </h1>
           </div>
 
           <div className="flex items-center gap-3">
-            <DivaChikLogo variant="compact" size="xs" theme="dark" />
+            <DivaChikLogo variant="compact" size="xs" theme="auto" />
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#1E5638] font-medium border-l border-[#EAE6DE] pl-3">
               <Lock className="w-3.5 h-3.5" />
               <span>256-Bit SSL Encrypted & PCI-DSS Compliant</span>
@@ -905,7 +918,7 @@ export const CheckoutView: React.FC = () => {
                       {/* Interactive Credit Card Visualizer */}
                       <div className="w-full max-w-sm mx-auto bg-gradient-to-tr from-[#141414] via-[#222222] to-[#333333] text-white p-5 rounded-md shadow-lg space-y-4 font-mono border border-white/10">
                         <div className="flex justify-between items-center">
-                          <span className="text-xs font-sans tracking-widest text-[#C85A32] font-bold">DIVA'CHIK BLACK CARD</span>
+                          <span className="text-xs font-sans tracking-widest text-[#C85A32] font-bold">DIVACHIC BLACK CARD</span>
                           <span className="text-xs font-bold">VISA / MASTER</span>
                         </div>
                         <div className="text-base tracking-widest pt-2">

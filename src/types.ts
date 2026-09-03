@@ -1,6 +1,21 @@
 export type CategoryType = 'all' | 'backpack' | 'shoes' | 'glasses' | 'hats' | 'apparel' | 'accessories';
 export type ProductCategory = 'backpack' | 'shoes' | 'glasses' | 'hats' | 'apparel' | 'accessories';
 
+export interface StoreCategory {
+  id: string;
+  key?: CategoryType | string;
+  name: string;
+  description: string;
+  quote?: string;
+  tagline?: string;
+  image?: string;
+  imageUrl: string;
+  badgeText?: string;
+  featured: boolean;
+  orderIndex: number;
+  updatedAt?: any;
+}
+
 export interface ProductVariant {
   id: string;
   name: string;
@@ -62,6 +77,9 @@ export interface Product {
   };
   recentPurchasesCount?: number; // e.g. 42 bought in last 7 days
   returnPolicy?: string; // e.g. "7 Days Easy Hassle-Free Returns & Exchange"
+  customFont?: string; // e.g. "'Playfair Display', serif" or custom font
+  customFontSize?: string; // e.g. "1rem" or "1.25rem"
+  buyNowButtonColor?: string; // Hex color override for Buy Now button
   reviews: Review[];
 }
 
@@ -98,12 +116,26 @@ export interface User {
   addresses: Address[];
 }
 
-export type OrderStatus = 'placed' | 'packed' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
+export type CanonicalOrderStatus = 'Pending' | 'Accepted' | 'Yet to be Sent' | 'Ready' | 'Dispatched' | 'Rejected';
+export type OrderStatus = CanonicalOrderStatus | 'placed' | 'packed' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'cancelled' | 'returned' | 'refunded';
+
+export interface OrderCustomerInfo {
+  fullName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+}
 
 export interface OrderItem {
   productId: string;
   name: string;
+  title?: string;
   image: string;
+  imageUrl?: string;
   price: number;
   quantity: number;
   selectedColor?: string;
@@ -121,15 +153,23 @@ export interface OrderTrackingEvent {
 
 export interface Order {
   id: string;
+  orderId?: string;
   orderNumber: string;
   date: string;
+  createdAt?: any;
+  updatedAt?: any;
+  customerName?: string;
+  email?: string;
+  customer?: OrderCustomerInfo;
   items: OrderItem[];
   subtotal: number;
   shippingFee: number;
   discount: number;
   tax: number;
   total: number;
+  totalAmount?: number;
   status: OrderStatus;
+  dispatchDate?: string | null;
   shippingAddress: Address;
   paymentMethod: string;
   paymentStatus: 'paid' | 'pending' | 'cod';

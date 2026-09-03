@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { X, Star, ShoppingBag, Zap, Heart, Check, ArrowRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const QuickViewModal: React.FC = () => {
   const { 
@@ -39,50 +39,56 @@ export const QuickViewModal: React.FC = () => {
     }
   }, [quickViewProduct]);
 
-  if (!quickViewProduct) return null;
-
-  const isSaved = isInWishlist(quickViewProduct.id);
-  const isOutOfStock = quickViewProduct.isSoldOut || quickViewProduct.stockQuantity <= 0;
+  const isSaved = quickViewProduct ? isInWishlist(quickViewProduct.id) : false;
+  const isOutOfStock = quickViewProduct ? (quickViewProduct.isSoldOut || quickViewProduct.stockQuantity <= 0) : false;
 
   const handleClose = () => {
     setQuickViewProduct(null);
   };
 
   const handleDirectBuy = () => {
-    buyNow(quickViewProduct, quantity, selectedColor, selectedSize);
-    handleClose();
+    if (quickViewProduct) {
+      buyNow(quickViewProduct, quantity, selectedColor, selectedSize);
+      handleClose();
+    }
   };
 
   const handleAddBag = () => {
-    addToCart(quickViewProduct, quantity, selectedColor, selectedSize);
-    handleClose();
+    if (quickViewProduct) {
+      addToCart(quickViewProduct, quantity, selectedColor, selectedSize);
+      handleClose();
+    }
   };
 
   const handleFullDetail = () => {
-    handleClose();
-    openProductDetail(quickViewProduct);
+    if (quickViewProduct) {
+      handleClose();
+      openProductDetail(quickViewProduct);
+    }
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={handleClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-        />
+      {quickViewProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={handleClose}
+            className="fixed inset-0 bg-neutral-900/40 backdrop-blur-xs"
+          />
 
-        {/* Modal Container */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ duration: 0.2 }}
-          className="relative bg-white rounded-xs border border-[#EAE6DE] shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh] z-10 my-auto custom-scrollbar"
-        >
+          {/* Modal Container with Luxury Easing Scale */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="relative bg-white rounded-xl border border-[#EAE6DE] shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh] z-10 my-auto custom-scrollbar"
+          >
           {/* Close button */}
           <button
             onClick={handleClose}
@@ -141,7 +147,7 @@ export const QuickViewModal: React.FC = () => {
                   {quickViewProduct.categoryTag || `#${quickViewProduct.category}`}
                 </span>
 
-                <h2 className="text-xl font-semibold text-[#1F1F1F] font-editorial mt-1 leading-snug">
+                <h2 className="product-title font-product text-xl font-semibold text-[#1F1F1F] mt-1 leading-snug">
                   {quickViewProduct.name}
                 </h2>
 
@@ -285,6 +291,7 @@ export const QuickViewModal: React.FC = () => {
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 };

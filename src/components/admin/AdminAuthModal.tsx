@@ -68,7 +68,7 @@ export const AdminAuthModal: React.FC = () => {
                 Merchant Operations
               </h3>
               <p className="text-xs text-[#A8A8A8]">
-                Protected Diva'Chik administrative console
+                Protected DivaChic administrative console
               </p>
             </div>
           </div>

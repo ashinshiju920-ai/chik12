@@ -10,11 +10,13 @@ import {
   ChevronDown, 
   ShieldCheck, 
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Currency } from '../../types';
 
-import { DivaChikLogo } from '../common/DivaChikLogo';
+import { DivaChicLogo } from '../common/DivaChikLogo';
 
 export const Header: React.FC = () => {
   const { 
@@ -32,7 +34,9 @@ export const Header: React.FC = () => {
     setSelectedCategory,
     isAdminAuthenticated,
     lockAdmin,
-    products
+    products,
+    isDarkMode,
+    toggleDarkMode
   } = useStore();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -74,9 +78,9 @@ export const Header: React.FC = () => {
               id="header-brand-logo"
               onClick={() => navigateTo('home')}
               className="cursor-pointer hover:opacity-90 transition-opacity flex items-center"
-              aria-label="Diva'Chik Home"
+              aria-label="DivaChic Home"
             >
-              <DivaChikLogo variant="full" size="md" theme="dark" />
+              <DivaChicLogo variant="full" size="md" theme="auto" />
             </button>
           </div>
 
@@ -238,15 +242,16 @@ export const Header: React.FC = () => {
             </button>
           </nav>
 
-          {/* Right Utility Icons */}
-          <div className="flex items-center space-x-4 sm:space-x-5 text-[#1F1F1F]">
-            {/* Currency Selector (Sleek Minimalist Pill) */}
-            <div className="hidden sm:flex items-center text-xs font-medium bg-[#F5F3EF] px-2.5 py-1 rounded-full border border-[#EAE6DE]">
+          {/* Right: Actions */}
+          <div className="flex items-center space-x-3 sm:space-x-4 text-[#1F1F1F]">
+            {/* Currency Selector */}
+            <div className="hidden md:flex items-center border border-[#EAE6DE] rounded-xs px-2 py-1 bg-[#FAF9F6]">
+              <span className="text-[10px] font-bold text-[#8C8477] mr-1">CUR</span>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as Currency)}
-                className="bg-transparent text-[#1F1F1F] font-semibold border-none focus:outline-none cursor-pointer text-xs pr-1"
-                aria-label="Select currency"
+                className="bg-transparent text-xs font-semibold text-[#1F1F1F] cursor-pointer focus:outline-none"
+                aria-label="Currency Selector"
               >
                 <option value="INR">INR (₹)</option>
                 <option value="USD">USD ($)</option>
@@ -266,6 +271,21 @@ export const Header: React.FC = () => {
                 <span>Admin</span>
               </button>
             )}
+
+            {/* Night Mode / Light Mode Toggle */}
+            <button
+              id="header-theme-toggle"
+              onClick={toggleDarkMode}
+              className="p-1.5 hover:text-[#C85A32] hover:bg-[#FAF9F6] dark:hover:bg-[#222222] rounded-xs transition-all cursor-pointer"
+              aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Night Mode'}
+              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Night Mode'}
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 text-[#E5A663] transition-transform duration-300 rotate-0 hover:rotate-45" />
+              ) : (
+                <Moon className="w-5 h-5 text-[#1F1F1F] transition-transform duration-300 hover:-rotate-12" />
+              )}
+            </button>
 
             {/* Search Trigger */}
             <button
@@ -336,6 +356,18 @@ export const Header: React.FC = () => {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white border-b border-[#E5E0D8] px-6 py-5 space-y-4 animate-fadeIn">
+          {/* Mobile Drawer Brand Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-[#F0ECE1]">
+            <DivaChicLogo variant="full" size="sm" theme="auto" showSubtitle={true} subtitleText="HAUTE COUTURE & LIFESTYLE" />
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1.5 text-[#8C8477] hover:text-[#1F1F1F] rounded-xs"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
           <div className="flex flex-col space-y-3 font-medium text-sm">
             <button
               onClick={() => navigateTo('home')}
@@ -344,6 +376,27 @@ export const Header: React.FC = () => {
               <span className="font-semibold text-xs uppercase tracking-wider">Home</span>
               <ArrowRight className="w-4 h-4 text-[#C85A32]" />
             </button>
+
+            {/* Night Mode Switch for Mobile */}
+            <div className="py-2 border-b border-[#F0ECE1] flex items-center justify-between text-xs">
+              <span className="text-[#8C8275] font-semibold uppercase tracking-wider text-[11px]">Night Mode:</span>
+              <button
+                onClick={toggleDarkMode}
+                className="flex items-center gap-1.5 px-3 py-1 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xs font-semibold text-xs cursor-pointer"
+              >
+                {isDarkMode ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5 text-[#E5A663]" />
+                    <span>Active (Dark)</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5 text-[#1F1F1F]" />
+                    <span>Light Theme</span>
+                  </>
+                )}
+              </button>
+            </div>
 
             {/* Redesigned Shop Categories without Hashtags */}
             <div className="py-2 border-b border-[#F0ECE1]">
@@ -422,7 +475,7 @@ export const Header: React.FC = () => {
               onClick={() => navigateTo('about')}
               className="text-left py-2 border-b border-[#F0ECE1] text-xs uppercase tracking-wider font-semibold"
             >
-              About Diva'Chik
+              About DivaChic
             </button>
 
             <button

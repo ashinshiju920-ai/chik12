@@ -10,7 +10,7 @@ import {
   Tag,
   Sparkles 
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const MiniCartDrawer: React.FC = () => {
   const { 
@@ -32,8 +32,6 @@ export const MiniCartDrawer: React.FC = () => {
     appliedCoupon
   } = useStore();
 
-  if (!isMiniCartOpen) return null;
-
   const progressPercent = Math.min(100, (cartSubtotal / freeShippingThreshold) * 100);
 
   const handleCheckout = () => {
@@ -49,21 +47,27 @@ export const MiniCartDrawer: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div
-        onClick={() => setIsMiniCartOpen(false)}
-        className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
-      />
+    <AnimatePresence>
+      {isMiniCartOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop with Soft Blur */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setIsMiniCartOpen(false)}
+            className="absolute inset-0 bg-neutral-900/40 backdrop-blur-xs"
+          />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <motion.div
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="w-screen max-w-md bg-white shadow-2xl flex flex-col"
-        >
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="w-screen max-w-md bg-white shadow-2xl flex flex-col z-10"
+            >
           {/* Header */}
           <div className="p-5 border-b border-[#EFECE6] flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -237,5 +241,7 @@ export const MiniCartDrawer: React.FC = () => {
         </motion.div>
       </div>
     </div>
+      )}
+    </AnimatePresence>
   );
 };

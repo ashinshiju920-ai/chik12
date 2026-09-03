@@ -33,18 +33,18 @@ export const HeroBanner: React.FC = () => {
             className="space-y-4 max-w-xl"
           >
             {/* Eyebrow department accent */}
-            <div className="flex items-center gap-2 text-xs font-semibold tracking-widest uppercase text-white/80 font-accent">
-              <Sparkles className="w-4 h-4 text-white" />
-              <span>Diva'Chik Couture · Autumn / Winter Drop</span>
+            <div className="flex items-center gap-2 font-sans text-[11px] font-semibold tracking-[0.22em] uppercase text-white/90">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+              <span>DivaChic Couture · Autumn / Winter Drop</span>
             </div>
 
             {/* Editorial Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight leading-tight font-brand text-white">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-medium tracking-tight leading-[1.12] text-white">
               {heroTitle}
             </h1>
 
             {/* Sub-copy */}
-            <p className="text-sm sm:text-base text-white/85 max-w-md font-light leading-relaxed pt-2">
+            <p className="font-sans text-sm sm:text-base text-white/90 max-w-md font-normal leading-relaxed pt-2">
               {heroSubtitle}
             </p>
 
@@ -53,7 +53,7 @@ export const HeroBanner: React.FC = () => {
               <button
                 id="hero-shop-now-button"
                 onClick={handleShopNow}
-                className="bg-white hover:bg-[#F9F8F6] text-[#1F1F1F] font-semibold text-xs tracking-widest uppercase px-8 py-4 rounded-xs shadow-lg hover:shadow-xl transition-all duration-200 inline-flex items-center gap-2.5 cursor-pointer group"
+                className="bg-white hover:bg-[#F9F8F6] text-[#1F1F1F] font-sans font-semibold text-xs tracking-[0.2em] uppercase px-8 py-4 rounded-xs shadow-lg hover:shadow-xl transition-all duration-200 inline-flex items-center gap-2.5 cursor-pointer group"
               >
                 <span>SHOP NOW</span>
                 <ArrowRight className="w-4 h-4 text-[#C85A32] group-hover:translate-x-1 transition-transform" />
@@ -67,7 +67,7 @@ export const HeroBanner: React.FC = () => {
           <div className="w-full h-full relative overflow-hidden">
             <img
               src={heroImage}
-              alt="Diva'Chik Runway & Lifestyle Model"
+              alt="DivaChic Runway & Lifestyle Model"
               className="w-full h-full object-cover object-center lg:object-right"
               loading="eager"
             />

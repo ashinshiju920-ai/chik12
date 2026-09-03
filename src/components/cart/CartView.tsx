@@ -255,7 +255,7 @@ export const CartView: React.FC = () => {
                     type="text"
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
-                    placeholder="e.g. DIVA10 or DIVACHIK20"
+                    placeholder="e.g. DIVA10 or DIVACHIC20"
                     className="flex-1 px-3 py-2 text-xs border border-[#D5D0C5] rounded-xs focus:outline-none focus:border-[#C85A32] uppercase"
                   />
                   <button

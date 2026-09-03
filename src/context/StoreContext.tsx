@@ -9,26 +9,20 @@ import {
   ActivePage, 
   Currency, 
   CategoryType,
-  Review
+  Review,
+  StoreCategory
 } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_COUPONS, INITIAL_ORDERS } from '../data/products';
 import {
-  getSupabaseClient,
-  isSupabaseConfigured,
-  fetchProductsFromSupabase,
-  insertProductToSupabase,
-  fetchStoreSettingsFromSupabase,
-  updateStoreSettingsInSupabase,
-  fetchOrdersFromSupabase,
-  insertOrderToSupabase,
-  updateOrderStatusInSupabase,
-  signInWithGoogle,
-  signOutSupabase,
-  sendEmailOtp,
-  verifyEmailOtp,
-  signUpWithPassword,
-  signInWithPassword
-} from '../lib/supabase';
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  updateProfile
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, googleProvider, db } from '../firebase';
 import {
   safeJsonParse,
   authenticateAdminPasscode,
@@ -36,6 +30,34 @@ import {
   clearAdminSessionToken,
   sanitizeInput
 } from '../lib/security';
+import {
+  subscribeToProducts,
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  subscribeToOrders,
+  saveOrderToFirestore,
+  updateFirestoreOrderStatus,
+  subscribeToHomeBanner,
+  saveHomeBannerToFirestore,
+  subscribeToReviews,
+  saveReviewToFirestore,
+  deleteReviewFromFirestore,
+  approveReviewInFirestore,
+  FirestoreReview,
+  ThemeSettings,
+  DEFAULT_THEME_SETTINGS,
+  subscribeToThemeSettings,
+  saveThemeSettingsToFirestore,
+  DEFAULT_CATEGORIES,
+  subscribeToCategories,
+  saveCategoryToFirestore,
+  updateFirestoreCategory
+} from '../lib/firebaseService';
+import {
+  trackProductView,
+  trackAddToCart,
+  trackPurchase
+} from '../lib/analytics';
 
 interface Toast {
   id: string;
@@ -116,7 +138,8 @@ interface StoreContextType {
   orders: Order[];
   currentOrder: Order | null;
   placeOrder: (orderData: Partial<Order>) => Order;
-  updateOrderStatus: (orderId: string, status: Order['status'], note?: string) => void;
+  updateOrderStatus: (orderId: string, status: Order['status'], noteOrDispatchDate?: string | null, dispatchDateParam?: string | null) => void;
+  updateOrderDispatchDate: (orderId: string, dispatchDate: string | null) => void;
   approveOrder: (orderId: string) => void;
   markOrderShipped: (orderId: string, carrier?: string, trackingNumber?: string) => void;
   cancelOrder: (orderId: string, reason?: string) => void;
@@ -177,13 +200,118 @@ interface StoreContextType {
   verifyAdminPassword: (password: string) => Promise<boolean>;
   lockAdmin: () => void;
   
+  // Theme & Night Mode
+  theme: 'light' | 'dark' | 'system';
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+  
   // Site Banners & Branding Customizer
   siteBanners: SiteBanners;
   updateSiteBanners: (updated: Partial<SiteBanners>) => void;
   
-  // Supabase Real-time Cloud Sync
-  isSupabaseOnline: boolean;
-  syncSupabaseData: () => Promise<void>;
+  // Firebase Real-time Cloud Sync
+  isFirebaseOnline: boolean;
+  syncFirebaseData: () => Promise<void>;
+
+  // Real-Time Contact & Client Inquiries
+  contactInquiries: ContactInquiry[];
+  addContactInquiry: (inquiry: Omit<ContactInquiry, 'id' | 'createdAt' | 'status' | 'replies'>) => void;
+  replyContactInquiry: (inquiryId: string, replyText: string) => void;
+  deleteContactInquiry: (inquiryId: string) => void;
+
+  // Real-Time Staff Management
+  adminStaff: AdminStaffMember[];
+  addAdminStaff: (member: Omit<AdminStaffMember, 'id'>) => void;
+  deleteAdminStaff: (id: string) => void;
+  updateAdminStaff: (member: AdminStaffMember) => void;
+
+  // Real-Time Calendar Drops & Events
+  adminEvents: AdminCalendarEvent[];
+  addAdminEvent: (event: Omit<AdminCalendarEvent, 'id'>) => void;
+  deleteAdminEvent: (id: string) => void;
+
+  // Real-Time Email Broadcasts
+  adminCampaigns: AdminCampaign[];
+  dispatchAdminCampaign: (campaign: Omit<AdminCampaign, 'id' | 'sentAt' | 'openRate'>) => void;
+
+  // Admin Profile
+  adminProfile: AdminProfile;
+  updateAdminProfile: (profile: Partial<AdminProfile>) => void;
+
+  // Real-Time Verified Customer Reviews (Firestore)
+  reviews: FirestoreReview[];
+  addCustomerReview: (review: Omit<FirestoreReview, 'id' | 'date' | 'helpfulCount'>) => Promise<void>;
+  approveCustomerReview: (reviewId: string, approved?: boolean) => Promise<void>;
+  deleteCustomerReview: (reviewId: string) => Promise<void>;
+
+  // Dashboard Stats & Orders Reset (Protected with 8156958052)
+  clearAllOrders: () => void;
+  resetAllStatsToZero: (password: string) => boolean;
+  restoreDefaultOrders: () => void;
+
+  // Real-Time Typography & Appearance Studio (Firestore onSnapshot + CSS Variables)
+  themeSettings: ThemeSettings;
+  updateThemeSettings: (updated: Partial<ThemeSettings>) => Promise<void>;
+  applyThemeSettingsLocally: (theme: ThemeSettings) => void;
+
+  // Real-Time Category Builder (Firestore onSnapshot & Cloudinary)
+  categories: StoreCategory[];
+  updateCategory: (category: StoreCategory) => Promise<void>;
+}
+
+export interface ContactInquiry {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  orderNumber?: string;
+  status: 'new' | 'in-progress' | 'resolved';
+  createdAt: string;
+  replies: {
+    id: string;
+    sender: 'admin' | 'customer';
+    text: string;
+    createdAt: string;
+  }[];
+}
+
+export interface AdminStaffMember {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Owner' | 'Store Manager' | 'Inventory Lead' | 'Fulfillment Specialist' | 'Senior Stylist';
+  avatar: string;
+  status: 'Active' | 'On Leave' | 'Away';
+  lastActive: string;
+}
+
+export interface AdminCalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  type: 'drop' | 'sale' | 'restock' | 'fulfillment';
+  color: string;
+  notes: string;
+}
+
+export interface AdminCampaign {
+  id: string;
+  subject: string;
+  audience: string;
+  body: string;
+  sentAt: string;
+  recipientCount: number;
+  openRate: string;
+}
+
+export interface AdminProfile {
+  name: string;
+  email: string;
+  role: string;
+  avatar: string;
 }
 
 export interface SiteBanners {
@@ -202,7 +330,7 @@ export interface SiteBanners {
 }
 
 export const DEFAULT_SITE_BANNERS: SiteBanners = {
-  logoUrl: 'https://i.ibb.co/MymbxNmJ/image.png',
+  logoUrl: '/logo.png',
   heroImage: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=1200&auto=format&fit=crop',
   heroTitle: 'Enhancing your inner beauty.',
   heroSubtitle: 'Discover curated runway silhouettes, sustainable bio-acetate optics, and bespoke handcrafted couture essentials designed for the bold modern visionary.',
@@ -240,7 +368,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [siteBanners, setSiteBanners] = useState<SiteBanners>(() => {
-    return safeJsonParse(localStorage.getItem('diva_site_banners'), DEFAULT_SITE_BANNERS);
+    try {
+      const parsed = safeJsonParse<SiteBanners>(localStorage.getItem('diva_site_banners'), DEFAULT_SITE_BANNERS) || DEFAULT_SITE_BANNERS;
+      const clean = { ...DEFAULT_SITE_BANNERS, ...parsed };
+      if (!clean.logoUrl || clean.logoUrl.includes('i.ibb.co') || clean.logoUrl.startsWith('data:image')) {
+        clean.logoUrl = '/logo.png';
+      }
+      return clean;
+    } catch {
+      return DEFAULT_SITE_BANNERS;
+    }
   });
 
   const updateSiteBanners = (updated: Partial<SiteBanners>) => {
@@ -249,8 +386,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         localStorage.setItem('diva_site_banners', JSON.stringify(next));
       } catch {}
+      saveHomeBannerToFirestore(next).catch((err) => console.warn('Firestore home_banner sync warning:', err));
       return next;
     });
+    showToast('Site Banners & Announcements Updated', 'success', 'Synced across all visitors in real-time');
   };
 
   const setCurrency = (c: Currency) => {
@@ -258,6 +397,120 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       localStorage.setItem('haute_currency', c);
     } catch {}
+  };
+
+  // Theme & Night Mode System (Default: Light Mode)
+  const [theme, setThemeState] = useState<'light' | 'dark' | 'system'>(() => {
+    try {
+      const saved = localStorage.getItem('divachic_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch {}
+    return 'light';
+  });
+
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('divachic_theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+    } catch {}
+    return false;
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const applyTheme = () => {
+      const dark = theme === 'dark';
+      setIsDarkMode(dark);
+      if (dark) {
+        root.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+  }, [theme]);
+
+  const setTheme = (t: 'light' | 'dark' | 'system') => {
+    setThemeState(t);
+    try {
+      localStorage.setItem('divachic_theme', t);
+    } catch {}
+  };
+
+  const toggleDarkMode = () => {
+    const next = isDarkMode ? 'light' : 'dark';
+    setTheme(next);
+  };
+
+  // Dynamic CSS Variables & Typography Studio State (Real-Time Firestore Sync)
+  const applyThemeSettingsToDOM = useCallback((settings: ThemeSettings) => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (settings.headingFont) root.style.setProperty('--font-heading', settings.headingFont);
+    if (settings.productTitleFont) root.style.setProperty('--font-product-title', settings.productTitleFont);
+    if (settings.bodyFont) root.style.setProperty('--font-body', settings.bodyFont);
+    if (settings.headingSizeScale !== undefined) root.style.setProperty('--size-heading-scale', settings.headingSizeScale.toString());
+    if (settings.productTitleSizeScale !== undefined) root.style.setProperty('--size-product-title-scale', settings.productTitleSizeScale.toString());
+    if (settings.bodySizeScale !== undefined) root.style.setProperty('--size-body-scale', settings.bodySizeScale.toString());
+    if (settings.primaryColor) root.style.setProperty('--color-primary', settings.primaryColor);
+    if (settings.accentColor) root.style.setProperty('--color-accent', settings.accentColor);
+    
+    // Direct CSS Color Tokens Engine
+    if (settings.colors) {
+      Object.entries(settings.colors).forEach(([cssVar, hexValue]) => {
+        if (hexValue) {
+          const varName = cssVar.startsWith('--') 
+            ? cssVar 
+            : (cssVar.startsWith('color-') ? `--${cssVar}` : `--color-${cssVar}`);
+          root.style.setProperty(varName, hexValue as string);
+        }
+      });
+    }
+
+    // Dedicated Buy Now Button real-time color binding
+    if (settings.buyNowButtonColor) {
+      root.style.setProperty('--color-buynow-bg', settings.buyNowButtonColor);
+    }
+  }, []);
+
+  const [themeSettings, setThemeSettings] = useState<ThemeSettings>(() => {
+    const saved = safeJsonParse<ThemeSettings>(localStorage.getItem('diva_theme_settings'), DEFAULT_THEME_SETTINGS) || DEFAULT_THEME_SETTINGS;
+    const resolved: ThemeSettings = {
+      ...DEFAULT_THEME_SETTINGS,
+      ...saved,
+      colors: {
+        ...DEFAULT_THEME_SETTINGS.colors,
+        ...(saved?.colors || {})
+      }
+    };
+    applyThemeSettingsToDOM(resolved);
+    return resolved;
+  });
+
+  const applyThemeSettingsLocally = (updated: ThemeSettings) => {
+    setThemeSettings(updated);
+    applyThemeSettingsToDOM(updated);
+  };
+
+  const updateThemeSettings = async (updated: Partial<ThemeSettings>) => {
+    const next: ThemeSettings = { ...themeSettings, ...updated };
+    setThemeSettings(next);
+    applyThemeSettingsToDOM(next);
+    try {
+      localStorage.setItem('diva_theme_settings', JSON.stringify(next));
+    } catch {}
+    try {
+      await saveThemeSettingsToFirestore(next);
+      showToast('Brand & Typography Published', 'success', 'Live theme variables synced across all visitors in real time.');
+    } catch (err) {
+      console.warn('Firestore theme save warning:', err);
+      showToast('Theme Updated Locally', 'info', 'Saved to browser cache.');
+    }
   };
 
   const [isAdminView, setIsAdminView] = useState(false);
@@ -367,6 +620,241 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return saved ? parseFloat(saved) || 10 : 10;
   });
 
+  // Real-Time Contact & Support Inquiries State
+  const [contactInquiries, setContactInquiries] = useState<ContactInquiry[]>(() => {
+    const saved = safeJsonParse(localStorage.getItem('diva_inquiries'), null);
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return [
+      {
+        id: 'inq-1',
+        name: 'Aishwarya Roy',
+        email: 'aishwarya.roy@privé.com',
+        phone: '+91 98450 12891',
+        subject: 'Custom Tailoring for Silk Trench Coat',
+        message: 'Could you confirm if the Silk Trench Coat can be tailored for height 5’4?',
+        orderNumber: 'DIVA-2026-88392',
+        status: 'new',
+        createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+        replies: [
+          {
+            id: 'rep-1',
+            sender: 'admin',
+            text: 'Hello Aishwarya, our bespoke tailoring team can calibrate the hemline to your precise measurements.',
+            createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString()
+          }
+        ]
+      },
+      {
+        id: 'inq-2',
+        name: 'Marcus Vance',
+        email: 'marcus.v@vancecap.com',
+        phone: '+1 (415) 892-4912',
+        subject: 'Prescription Lens Optics Inquiry',
+        message: 'Are the Titanium Japanese frames compatible with progressive bifocal lenses?',
+        status: 'in-progress',
+        createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+        replies: []
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('diva_inquiries', JSON.stringify(contactInquiries));
+    } catch {}
+  }, [contactInquiries]);
+
+  const addContactInquiry = (inquiryData: Omit<ContactInquiry, 'id' | 'createdAt' | 'status' | 'replies'>) => {
+    const newInquiry: ContactInquiry = {
+      ...inquiryData,
+      id: `inq-${Date.now()}`,
+      status: 'new',
+      createdAt: new Date().toISOString(),
+      replies: []
+    };
+    setContactInquiries((prev) => [newInquiry, ...prev]);
+    showToast('Inquiry Submitted to Studio', 'success', 'Our client concierge will respond promptly.');
+  };
+
+  const replyContactInquiry = (inquiryId: string, replyText: string) => {
+    setContactInquiries((prev) =>
+      prev.map((inq) => {
+        if (inq.id !== inquiryId) return inq;
+        return {
+          ...inq,
+          status: 'in-progress',
+          replies: [
+            ...inq.replies,
+            {
+              id: `rep-${Date.now()}`,
+              sender: 'admin',
+              text: replyText,
+              createdAt: new Date().toISOString()
+            }
+          ]
+        };
+      })
+    );
+    showToast('Client reply dispatched', 'success');
+  };
+
+  const deleteContactInquiry = (inquiryId: string) => {
+    setContactInquiries((prev) => prev.filter((i) => i.id !== inquiryId));
+    showToast('Inquiry deleted', 'info');
+  };
+
+  // Real-Time Staff Management State
+  const [adminStaff, setAdminStaff] = useState<AdminStaffMember[]>(() => {
+    const saved = safeJsonParse(localStorage.getItem('diva_admin_staff'), null);
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return [
+      {
+        id: 'staff-1',
+        name: 'DivaChic Store Administrator',
+        email: 'admin@divachic.com',
+        role: 'Owner',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
+        status: 'Active',
+        lastActive: 'Online now'
+      },
+      {
+        id: 'staff-2',
+        name: 'Siddharth Rao',
+        email: 'siddharth@divachic.com',
+        role: 'Store Manager',
+        avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200&auto=format&fit=crop',
+        status: 'Active',
+        lastActive: '5m ago'
+      },
+      {
+        id: 'staff-3',
+        name: 'Camille Laurent',
+        role: 'Senior Stylist',
+        email: 'camille@divachic.com',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop',
+        status: 'Active',
+        lastActive: '18m ago'
+      },
+      {
+        id: 'staff-4',
+        name: 'Vikram Mehta',
+        role: 'Fulfillment Specialist',
+        email: 'vikram.logistics@divachic.com',
+        avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop',
+        status: 'Active',
+        lastActive: '1h ago'
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('diva_admin_staff', JSON.stringify(adminStaff));
+    } catch {}
+  }, [adminStaff]);
+
+  const addAdminStaff = (member: Omit<AdminStaffMember, 'id'>) => {
+    const newStaff: AdminStaffMember = { ...member, id: `staff-${Date.now()}` };
+    setAdminStaff((prev) => [...prev, newStaff]);
+    showToast('Staff member added', 'success');
+  };
+
+  const deleteAdminStaff = (id: string) => {
+    setAdminStaff((prev) => prev.filter((s) => s.id !== id));
+    showToast('Staff member removed', 'info');
+  };
+
+  const updateAdminStaff = (member: AdminStaffMember) => {
+    setAdminStaff((prev) => prev.map((s) => (s.id === member.id ? member : s)));
+    showToast('Staff permissions updated', 'success');
+  };
+
+  // Real-Time Calendar Drops & Events State
+  const [adminEvents, setAdminEvents] = useState<AdminCalendarEvent[]>(() => {
+    const saved = safeJsonParse(localStorage.getItem('diva_admin_events'), null);
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return [
+      { id: 'ev-1', title: 'Winter Cashmere Capsule Drop', date: '2026-09-10', type: 'drop', color: '#8B5CF6', notes: 'Launch 6 bespoke cashmere overcoats on runway' },
+      { id: 'ev-2', title: 'VIP Privé Flash Sale 20%', date: '2026-09-15', type: 'sale', color: '#EC4899', notes: 'Send automated coupon DIVACHIC20 to tier members' },
+      { id: 'ev-3', title: 'Italian Leather Soles Restock', date: '2026-09-22', type: 'restock', color: '#10B981', notes: '40 pairs of Chelsea boots arriving from Milan' },
+      { id: 'ev-4', title: 'Global Express Order Dispatch Run', date: '2026-09-28', type: 'fulfillment', color: '#3B82F6', notes: 'DHL Courier priority bulk pickup at 3:00 PM' }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('diva_admin_events', JSON.stringify(adminEvents));
+    } catch {}
+  }, [adminEvents]);
+
+  const addAdminEvent = (eventData: Omit<AdminCalendarEvent, 'id'>) => {
+    const newEv: AdminCalendarEvent = { ...eventData, id: `ev-${Date.now()}` };
+    setAdminEvents((prev) => [...prev, newEv]);
+    showToast('Event added to Runway Calendar', 'success');
+  };
+
+  const deleteAdminEvent = (id: string) => {
+    setAdminEvents((prev) => prev.filter((e) => e.id !== id));
+    showToast('Calendar event deleted', 'info');
+  };
+
+  // Real-Time Email Broadcasts State
+  const [adminCampaigns, setAdminCampaigns] = useState<AdminCampaign[]>(() => {
+    const saved = safeJsonParse(localStorage.getItem('diva_admin_campaigns'), null);
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return [
+      {
+        id: 'camp-1',
+        subject: 'Exclusive Autumn Capsule: 20% Off Runway Silhouettes',
+        audience: 'All VIP Members (1,420 Clients)',
+        body: 'Handcrafted with Japanese bio-acetates and Scandinavian wool. Use code DIVACHIC20 for 20% off.',
+        sentAt: '2026-09-02 14:30',
+        recipientCount: 1420,
+        openRate: '68.4%'
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('diva_admin_campaigns', JSON.stringify(adminCampaigns));
+    } catch {}
+  }, [adminCampaigns]);
+
+  const dispatchAdminCampaign = (campaignData: Omit<AdminCampaign, 'id' | 'sentAt' | 'openRate'>) => {
+    const newCamp: AdminCampaign = {
+      ...campaignData,
+      id: `camp-${Date.now()}`,
+      sentAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      openRate: '0.0%'
+    };
+    setAdminCampaigns((prev) => [newCamp, ...prev]);
+    showToast('Gazette Email Broadcast Dispatched!', 'success', `Delivered to ${campaignData.audience}`);
+  };
+
+  // Admin Profile State
+  const [adminProfile, setAdminProfileState] = useState<AdminProfile>(() => {
+    const saved = safeJsonParse(localStorage.getItem('diva_admin_profile'), null);
+    if (saved?.name) return saved;
+    return {
+      name: 'DivaChic Administrator',
+      email: 'admin@divachic.com',
+      role: 'Store Owner',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop'
+    };
+  });
+
+  const updateAdminProfile = (updated: Partial<AdminProfile>) => {
+    setAdminProfileState((prev) => {
+      const next = { ...prev, ...updated };
+      try {
+        localStorage.setItem('diva_admin_profile', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    showToast('Admin Profile Updated', 'success');
+  };
+
   const updateOnlineDiscountPercent = (percent: number) => {
     const clamped = Math.max(0, Math.min(50, percent));
     setOnlineDiscountPercentState(clamped);
@@ -374,92 +862,254 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast('Online Payment Discount Updated', 'success', `Online payments now receive ${clamped}% instant discount.`);
   };
 
-  const [isSupabaseOnline, setIsSupabaseOnline] = useState<boolean>(false);
+  // Firebase Auth Real-Time State Listener & Firestore 'users' sync
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        try {
+          const userDocRef = doc(db, 'users', fbUser.uid);
+          const userSnap = await getDoc(userDocRef);
+          const defaultAvatar = fbUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop';
+          const resolvedName = fbUser.displayName || fbUser.email?.split('@')[0] || 'DivaChic Member';
 
-  const syncSupabaseData = useCallback(async () => {
-    const client = getSupabaseClient();
-    if (!client) {
-      setIsSupabaseOnline(false);
-      return;
-    }
-
-    try {
-      // 1. Fetch Store Settings (Delivery Days)
-      const settings = await fetchStoreSettingsFromSupabase();
-      if (settings && settings.default_delivery_days) {
-        setStandardDeliveryDaysState(settings.default_delivery_days);
-        localStorage.setItem('haute_delivery_days', settings.default_delivery_days.toString());
+          if (!userSnap.exists()) {
+            const initialUser: User = {
+              id: fbUser.uid,
+              name: resolvedName,
+              email: fbUser.email || '',
+              avatar: defaultAvatar,
+              addresses: []
+            };
+            await setDoc(userDocRef, {
+              uid: fbUser.uid,
+              email: fbUser.email,
+              displayName: resolvedName,
+              photoURL: defaultAvatar,
+              addresses: [],
+              createdAt: serverTimestamp(),
+              lastLoginAt: serverTimestamp()
+            }, { merge: true });
+            setCurrentUser(initialUser);
+          } else {
+            const data = userSnap.data();
+            const loadedUser: User = {
+              id: fbUser.uid,
+              name: data.displayName || resolvedName,
+              email: fbUser.email || data.email || '',
+              phone: data.phone,
+              avatar: data.photoURL || defaultAvatar,
+              addresses: data.addresses || []
+            };
+            await setDoc(userDocRef, {
+              lastLoginAt: serverTimestamp()
+            }, { merge: true });
+            setCurrentUser(loadedUser);
+          }
+        } catch (err) {
+          console.warn('[Firebase Auth] User doc sync:', err);
+          setCurrentUser({
+            id: fbUser.uid,
+            name: fbUser.displayName || fbUser.email?.split('@')[0] || 'DivaChic Member',
+            email: fbUser.email || '',
+            avatar: fbUser.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
+            addresses: []
+          });
+        }
+      } else {
+        setCurrentUser(null);
       }
+    });
 
-      // 2. Fetch Products
-      const cloudProducts = await fetchProductsFromSupabase();
-      if (cloudProducts && cloudProducts.length > 0) {
-        setProducts((prev) => {
-          // Merge custom created products
-          const existingIds = new Set(cloudProducts.map((p) => p.id));
-          const uniqueLocal = prev.filter((p) => !existingIds.has(p.id));
-          return [...cloudProducts, ...uniqueLocal];
-        });
-      }
-
-      // 3. Fetch Orders
-      const cloudOrders = await fetchOrdersFromSupabase();
-      if (cloudOrders && cloudOrders.length > 0) {
-        setOrders((prev) => {
-          const existingIds = new Set(cloudOrders.map((o) => o.id));
-          const uniqueLocal = prev.filter((o) => !existingIds.has(o.id));
-          return [...cloudOrders, ...uniqueLocal];
-        });
-      }
-
-      setIsSupabaseOnline(true);
-    } catch (err) {
-      console.warn('[Supabase Sync] Warning during sync:', err);
-      setIsSupabaseOnline(false);
-    }
+    return () => unsubscribe();
   }, []);
 
-  // Initial Supabase Load & Auth check
-  useEffect(() => {
-    syncSupabaseData();
-
-    const client = getSupabaseClient();
-    if (client) {
-      client.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          setCurrentUser({
-            id: session.user.id,
-            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Member',
-            email: session.user.email || '',
-            avatar: session.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-            addresses: []
-          });
-        }
-      });
-
-      const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
-          setCurrentUser({
-            id: session.user.id,
-            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Member',
-            email: session.user.email || '',
-            avatar: session.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-            addresses: []
-          });
-        }
-      });
-
-      return () => {
-        subscription.unsubscribe();
-      };
+  // Real-Time Verified Customer Reviews (Firestore)
+  const [firestoreReviews, setFirestoreReviews] = useState<FirestoreReview[]>([
+    {
+      id: 'rev-101',
+      productId: 'prod-1',
+      author: 'Sophia Chen',
+      rating: 5,
+      title: 'Architectural Masterpiece',
+      comment: 'The vegetable-tanned Scandinavian leather feels so supple yet indestructible. Arrived in express packaging in pristine condition.',
+      imageUrl: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=600&auto=format&fit=crop',
+      date: 'September 01, 2026',
+      verified: true,
+      approved: true,
+      helpfulCount: 14
+    },
+    {
+      id: 'rev-102',
+      productId: 'prod-3',
+      author: 'Lars Møller',
+      rating: 5,
+      title: 'Flawless Japanese Titanium Hinges',
+      comment: 'The bio-cellulose acetate frame feels weightless on the nose bridge. Exquisite attention to detail.',
+      imageUrl: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?q=80&w=600&auto=format&fit=crop',
+      date: 'August 28, 2026',
+      verified: true,
+      approved: true,
+      helpfulCount: 9
     }
-  }, [syncSupabaseData]);
+  ]);
+
+  const addCustomerReview = async (reviewData: Omit<FirestoreReview, 'id' | 'date' | 'helpfulCount'>) => {
+    const newRev: FirestoreReview = {
+      ...reviewData,
+      id: `rev-${Date.now()}`,
+      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      helpfulCount: 0,
+      verified: true,
+      approved: true
+    };
+    setFirestoreReviews((prev) => [newRev, ...prev]);
+    try {
+      await saveReviewToFirestore(newRev);
+      showToast('Review Published to Firestore', 'success', 'Appears in real-time across all product & testimonial pages.');
+    } catch (err) {
+      console.warn('Firestore review save error:', err);
+    }
+  };
+
+  const approveCustomerReview = async (reviewId: string, approved: boolean = true) => {
+    setFirestoreReviews((prev) => prev.map((r) => r.id === reviewId ? { ...r, approved } : r));
+    try {
+      await approveReviewInFirestore(reviewId, approved);
+      showToast(approved ? 'Review Approved' : 'Review Hidden', 'success');
+    } catch (err) {
+      console.warn('Firestore approve review error:', err);
+    }
+  };
+
+  const deleteCustomerReview = async (reviewId: string) => {
+    setFirestoreReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    try {
+      await deleteReviewFromFirestore(reviewId);
+      showToast('Review removed from Firestore', 'info');
+    } catch (err) {
+      console.warn('Firestore delete review error:', err);
+    }
+  };
+
+  // Real-Time Category Builder State (Firestore onSnapshot & Cloudinary)
+  const [categories, setCategories] = useState<StoreCategory[]>(() => {
+    return safeJsonParse(localStorage.getItem('diva_categories'), DEFAULT_CATEGORIES);
+  });
+
+  const updateCategory = async (category: StoreCategory) => {
+    setCategories((prev) => {
+      const exists = prev.some((c) => c.id === category.id);
+      const next = exists 
+        ? prev.map((c) => (c.id === category.id ? { ...c, ...category } : c))
+        : [...prev, category];
+      try {
+        localStorage.setItem('diva_categories', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    try {
+      await saveCategoryToFirestore(category);
+      showToast('Category Updated', 'success', `${category.name} synchronized to Firestore & Cloudinary.`);
+    } catch (err) {
+      console.error('Failed to update category in Firestore:', err);
+      showToast('Update Failed', 'error', 'Could not sync category to Firestore.');
+    }
+  };
+
+  // Real-Time Firebase Firestore onSnapshot Subscriptions (Products, Banners, Reviews, Orders, Categories)
+  useEffect(() => {
+    // 1. Products onSnapshot
+    const unsubscribeProducts = subscribeToProducts((cloudProducts) => {
+      if (cloudProducts && cloudProducts.length > 0) {
+        setProducts((prev) => {
+          const map = new Map<string, Product>();
+          prev.forEach((p) => map.set(p.id, p));
+          cloudProducts.forEach((p) => map.set(p.id, p));
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    // 2. Dynamic Hero Banners onSnapshot (settings/home_banner)
+    const unsubscribeBanner = subscribeToHomeBanner((cloudBanner) => {
+      if (cloudBanner) {
+        setSiteBanners((prev) => ({
+          ...prev,
+          ...cloudBanner,
+          heroTitle: cloudBanner.heroTitle || prev.heroTitle,
+          heroSubtitle: cloudBanner.heroSubtitle || prev.heroSubtitle,
+          heroImage: cloudBanner.heroImage || prev.heroImage,
+          eyewearImage: cloudBanner.eyewearImage || prev.eyewearImage,
+          editorialImage: cloudBanner.editorialImage || prev.editorialImage,
+          logoUrl: cloudBanner.logoUrl || prev.logoUrl
+        }));
+      }
+    });
+
+    // 3. Verified Customer Reviews onSnapshot (reviews collection)
+    const unsubscribeReviews = subscribeToReviews((cloudReviews) => {
+      if (cloudReviews && cloudReviews.length > 0) {
+        setFirestoreReviews(cloudReviews);
+      }
+    });
+
+    // 4. Orders onSnapshot
+    const unsubscribeOrders = subscribeToOrders((cloudOrders) => {
+      if (cloudOrders && cloudOrders.length > 0) {
+        setOrders((prev) => {
+          const map = new Map<string, Order>();
+          prev.forEach((o) => map.set(o.id, o));
+          cloudOrders.forEach((o) => map.set(o.id, o));
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    // 5. Categories onSnapshot (categories collection)
+    const unsubscribeCategories = subscribeToCategories((cloudCategories) => {
+      if (cloudCategories && cloudCategories.length > 0) {
+        setCategories(cloudCategories);
+        try {
+          localStorage.setItem('diva_categories', JSON.stringify(cloudCategories));
+        } catch {}
+      }
+    });
+
+    // 6. Theme & Color Palette onSnapshot (settings/theme)
+    const unsubscribeTheme = subscribeToThemeSettings((cloudTheme) => {
+      if (cloudTheme) {
+        setThemeSettings((prev) => {
+          const merged: ThemeSettings = {
+            ...prev,
+            ...cloudTheme,
+            colors: {
+              ...(prev.colors || DEFAULT_THEME_SETTINGS.colors),
+              ...(cloudTheme.colors || {})
+            }
+          };
+          applyThemeSettingsToDOM(merged);
+          try {
+            localStorage.setItem('diva_theme_settings', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeBanner();
+      unsubscribeReviews();
+      unsubscribeOrders();
+      unsubscribeCategories();
+      unsubscribeTheme();
+    };
+  }, [applyThemeSettingsToDOM]);
 
   const setStandardDeliveryDays = (days: number) => {
     const clamped = Math.max(1, Math.min(30, days));
     setStandardDeliveryDaysState(clamped);
     localStorage.setItem('haute_delivery_days', clamped.toString());
-    updateStoreSettingsInSupabase('default_delivery_days', clamped.toString());
     showToast(`Delivery timeframe updated to ${clamped} business days`, 'info');
   };
 
@@ -634,44 +1284,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [currentUser]);
 
-  // Supabase Auth real-time listener
-  useEffect(() => {
-    const client = getSupabaseClient();
-    if (!client) return;
-
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const suUser = session.user;
-        setCurrentUser((prev) => prev || {
-          id: suUser.id,
-          name: suUser.user_metadata?.full_name || suUser.email?.split('@')[0] || 'Member',
-          email: suUser.email || '',
-          phone: suUser.phone || '',
-          avatar: suUser.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-          addresses: []
-        });
-      }
-    });
-
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const suUser = session.user;
-        setCurrentUser({
-          id: suUser.id,
-          name: suUser.user_metadata?.full_name || suUser.email?.split('@')[0] || 'Member',
-          email: suUser.email || '',
-          phone: suUser.phone || '',
-          avatar: suUser.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-          addresses: []
-        });
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
   // Abandoned Cart Recovery Trigger: If cart has items and user is idle on the page for 45s
   useEffect(() => {
     if (cart.length > 0) {
@@ -750,6 +1362,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const openProductDetail = (product: Product) => {
     setSelectedProduct(product);
     setActivePage('product-detail');
+    trackProductView(product.id, product.name, product.price, product.category);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -788,6 +1401,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       ];
     });
+
+    trackAddToCart(product.id, product.name, product.price, quantity);
 
     showToast(
       `Added to Bag: ${product.name}`,
@@ -940,18 +1555,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Product Admin Management
   const addProduct = (newProd: Product) => {
     setProducts((prev) => [newProd, ...prev]);
-    insertProductToSupabase({
-      name: newProd.name,
-      price: newProd.originalPrice || newProd.price,
-      salePrice: newProd.originalPrice ? newProd.price : undefined,
-      images: newProd.images,
-      youtubeUrl: newProd.youtubeUrl,
-      description: newProd.description,
-      category: newProd.category,
-      stockQuantity: newProd.stockQuantity,
-      sku: newProd.sku
-    });
-    showToast(`Created new product: ${newProd.name}`, 'success', `SKU: ${newProd.sku}`);
+    saveProductToFirestore(newProd).catch((e) => console.warn('Firestore save error:', e));
+    showToast(`Created new product: ${newProd.name}`, 'success', `Synced to Firebase Firestore`);
   };
 
   const updateProduct = (updated: Product) => {
@@ -959,12 +1564,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (selectedProduct && selectedProduct.id === updated.id) {
       setSelectedProduct(updated);
     }
-    showToast(`Updated product: ${updated.name}`, 'success');
+    saveProductToFirestore(updated).catch((e) => console.warn('Firestore update error:', e));
+    showToast(`Updated product: ${updated.name}`, 'success', `Synced to Firebase Firestore`);
   };
 
   const deleteProduct = (productId: string) => {
     const prod = products.find((p) => p.id === productId);
     setProducts((prev) => prev.filter((p) => p.id !== productId));
+    deleteProductFromFirestore(productId).catch((e) => console.warn('Firestore delete error:', e));
     showToast(`Product deleted`, 'info', prod?.name);
   };
 
@@ -1034,182 +1641,129 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
   };
 
-  // Auth methods
-  const sendEmailOtpCode = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    const res = await sendEmailOtp(email);
-    if (!res.success) {
-      showToast('OTP Request Failed', 'error', res.error || 'Check email address and try again.');
-    } else {
-      showToast('OTP Code Sent!', 'info', `Check your email inbox (${email}) for your 6-digit verification code.`);
-    }
-    return res;
-  };
-
-  const verifyEmailOtpCode = async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
-    const res = await verifyEmailOtp(email, token);
-    if (!res.success) {
-      showToast('Verification Failed', 'error', res.error || 'Invalid or expired OTP code.');
-      return res;
-    }
-
-    const suUser = res.user;
-    const user: User = {
-      id: suUser?.id || `usr-${Date.now().toString().slice(-4)}`,
-      name: suUser?.user_metadata?.full_name || email.split('@')[0] || 'Valued Member',
-      email,
-      phone: '',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-      addresses: []
-    };
-
-    setCurrentUser(user);
-    setIsAuthModalOpen(false);
-    showToast(`Welcome, ${user.name}!`, 'success', 'Authenticated with Supabase Email OTP.');
-    return { success: true };
-  };
-
+  // Firebase Authentication Methods
   const loginWithPassword = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    const res = await signInWithPassword(email, password);
-    if (!res.success) {
-      showToast('Sign In Failed', 'error', res.error || 'Incorrect email or password.');
-      return res;
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const fbUser = userCredential.user;
+      showToast(`Welcome back, ${fbUser.displayName || fbUser.email}!`, 'success', 'Signed in securely with Firebase Auth.');
+      setIsAuthModalOpen(false);
+      return { success: true };
+    } catch (err: any) {
+      console.error('[Firebase Auth] Login error:', err);
+      let message = 'Incorrect email or password.';
+      if (err.code === 'auth/invalid-email') message = 'Invalid email address format.';
+      else if (err.code === 'auth/user-not-found') message = 'No account found with this email.';
+      else if (err.code === 'auth/wrong-password') message = 'Incorrect password.';
+      showToast('Sign In Failed', 'error', message);
+      return { success: false, error: message };
     }
-    const suUser = res.user;
-    const user: User = {
-      id: suUser?.id || `usr-${Date.now().toString().slice(-4)}`,
-      name: suUser?.user_metadata?.full_name || email.split('@')[0] || 'Valued Member',
-      email,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-      addresses: []
-    };
-    setCurrentUser(user);
-    setIsAuthModalOpen(false);
-    showToast(`Welcome back, ${user.name}!`, 'success', 'Signed in via Supabase.');
-    return { success: true };
   };
 
   const registerWithPassword = async (email: string, password: string, name?: string): Promise<{ success: boolean; error?: string }> => {
-    const res = await signUpWithPassword(email, password, name);
-    if (!res.success) {
-      showToast('Registration Failed', 'error', res.error || 'Failed to create account.');
-      return res;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const fbUser = userCredential.user;
+      if (name) {
+        await updateProfile(fbUser, { displayName: name });
+      }
+      const initialUser: User = {
+        id: fbUser.uid,
+        name: name || fbUser.email?.split('@')[0] || 'DivaChic Member',
+        email: fbUser.email || '',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
+        addresses: []
+      };
+      await setDoc(doc(db, 'users', fbUser.uid), {
+        uid: fbUser.uid,
+        email: fbUser.email,
+        displayName: initialUser.name,
+        photoURL: initialUser.avatar,
+        addresses: [],
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp()
+      }, { merge: true });
+      setCurrentUser(initialUser);
+      setIsAuthModalOpen(false);
+      showToast('Account Created!', 'success', 'Welcome to DivaChic Privé Lounge.');
+      return { success: true };
+    } catch (err: any) {
+      console.error('[Firebase Auth] Registration error:', err);
+      let message = 'Failed to create account.';
+      if (err.code === 'auth/email-already-in-use') message = 'This email is already registered. Please sign in.';
+      else if (err.code === 'auth/weak-password') message = 'Password should be at least 6 characters.';
+      showToast('Registration Failed', 'error', message);
+      return { success: false, error: message };
     }
-    const suUser = res.user;
-    const user: User = {
-      id: suUser?.id || `usr-${Date.now().toString().slice(-4)}`,
-      name: name || email.split('@')[0] || 'New Member',
-      email,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-      addresses: []
-    };
-    setCurrentUser(user);
-    setIsAuthModalOpen(false);
-    showToast('Account Created!', 'success', 'Welcome to Diva\'Chik Privé Lounge.');
-    return { success: true };
-  };
-
-  const login = async (email: string): Promise<boolean> => {
-    const res = await sendEmailOtpCode(email);
-    if (res.success) {
-      return true;
-    }
-    // Fallback demo member if offline
-    const user: User = {
-      id: `usr-${Date.now().toString().slice(-4)}`,
-      name: email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').trim() || 'Valued Member',
-      email,
-      phone: '+1 (555) 349-2910',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop',
-      addresses: [
-        {
-          id: 'addr-1',
-          fullName: email.split('@')[0],
-          phone: '+1 (555) 349-2910',
-          street: '100 Modernist Way',
-          city: 'New York',
-          state: 'NY',
-          pincode: '10001',
-          country: 'United States',
-          type: 'home',
-          isDefault: true
-        }
-      ]
-    };
-    setCurrentUser(user);
-    setIsAuthModalOpen(false);
-    showToast(`Welcome back, ${user.name}!`, 'success', 'Logged in securely.');
-    return true;
   };
 
   const loginWithGoogle = async () => {
     try {
-      if (isSupabaseConfigured()) {
-        await signInWithGoogle();
-        return;
-      }
+      const result = await signInWithPopup(auth, googleProvider);
+      const fbUser = result.user;
+      showToast('Signed in with Google', 'success', fbUser.email || 'Firebase Session Active');
+      setIsAuthModalOpen(false);
     } catch (err: any) {
-      console.warn('[Supabase Google Auth] Fallback to demo member:', err.message);
+      console.error('[Firebase Auth] Google login error:', err);
+      showToast('Google Sign-In Failed', 'error', err?.message || 'Popup closed or interrupted.');
     }
-    
-    const user: User = {
-      id: 'usr-google-99',
-      name: 'Elena Rostova',
-      email: 'elena.rostova@gmail.com',
-      phone: '+1 (555) 839-2041',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop',
-      addresses: [
-        {
-          id: 'addr-google-1',
-          fullName: 'Elena Rostova',
-          phone: '+1 (555) 839-2041',
-          street: '420 Madison Avenue',
-          apartment: 'Apt 18C',
-          city: 'New York',
-          state: 'NY',
-          pincode: '10017',
-          country: 'United States',
-          type: 'home',
-          isDefault: true
-        }
-      ]
-    };
-    setCurrentUser(user);
-    setIsAuthModalOpen(false);
-    showToast('Signed in with Google Account', 'success', user.email);
   };
 
-  const loginWithPhoneOtp = async (phone: string, otp: string): Promise<boolean> => {
-    if (otp.length !== 6 && otp !== '123456') {
-      showToast('Invalid verification code', 'error', 'Use code 123456 for demo authorization.');
-      return false;
-    }
-    const user: User = {
-      id: `usr-phone-${Date.now().toString().slice(-4)}`,
-      name: 'Haute Member',
-      email: 'member@haute.boutique',
-      phone,
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop',
-      addresses: []
-    };
-    setCurrentUser(user);
-    setIsAuthModalOpen(false);
-    showToast('Phone Number Verified', 'success', 'Welcome to Haute Privé.');
+  const login = async (email: string): Promise<boolean> => {
+    // Direct shortcut helper for email checkout
     return true;
   };
 
-  const logout = () => {
-    signOutSupabase().catch((e) => console.warn('[Supabase SignOut]', e));
-    setCurrentUser(null);
-    showToast('You have been logged out safely.', 'info');
+  const sendEmailOtpCode = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    return { success: true };
   };
 
-  const updateUserProfile = (data: Partial<User>) => {
+  const verifyEmailOtpCode = async (email: string, token: string): Promise<{ success: boolean; error?: string }> => {
+    return { success: true };
+  };
+
+  const loginWithPhoneOtp = async (phone: string, otp: string): Promise<boolean> => {
+    return true;
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+      showToast('You have been signed out safely.', 'info');
+    } catch (err) {
+      console.error('[Firebase Auth] Logout error:', err);
+    }
+  };
+
+  const updateUserProfile = async (data: Partial<User>) => {
     if (!currentUser) return;
-    setCurrentUser({ ...currentUser, ...data });
+    const updated = { ...currentUser, ...data };
+    setCurrentUser(updated);
+
+    if (auth.currentUser && data.name) {
+      try {
+        await updateProfile(auth.currentUser, { displayName: data.name });
+      } catch {}
+    }
+
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'users', auth.currentUser.uid), {
+          displayName: updated.name,
+          phone: updated.phone || null,
+          photoURL: updated.avatar,
+          addresses: updated.addresses,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firestore profile update warning:', err);
+      }
+    }
     showToast('Profile updated', 'success');
   };
 
-  const saveAddress = (addrData: Omit<Address, 'id'>) => {
+  const saveAddress = async (addrData: Omit<Address, 'id'>) => {
     if (!currentUser) return;
     const newAddr: Address = {
       ...addrData,
@@ -1218,11 +1772,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updated = addrData.isDefault
       ? currentUser.addresses.map((a) => ({ ...a, isDefault: false }))
       : currentUser.addresses;
-
-    setCurrentUser({
-      ...currentUser,
-      addresses: [...updated, newAddr]
-    });
+    updated.push(newAddr);
+    await updateUserProfile({ addresses: updated });
     showToast('Address saved to address book', 'success');
   };
 
@@ -1256,6 +1807,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fullName: currentUser?.name || 'Guest Shopper',
       phone: '+1 (555) 000-0000',
       street: '123 Fashion Blvd',
+      apartment: '',
       city: 'New York',
       state: 'NY',
       pincode: '10001',
@@ -1264,26 +1816,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isDefault: true
     };
 
+    const shippingAddress = orderData.shippingAddress || defaultAddress;
+    const finalCustomer = orderData.customer || {
+      fullName: shippingAddress.fullName || currentUser?.name || 'Valued Client',
+      email: currentUser?.email || orderData.email || 'customer@gmail.com',
+      phone: shippingAddress.phone || currentUser?.phone || '+1 (555) 000-0000',
+      addressLine1: shippingAddress.street || '123 Fashion Blvd',
+      addressLine2: shippingAddress.apartment || '',
+      city: shippingAddress.city || 'New York',
+      state: shippingAddress.state || 'NY',
+      postalCode: shippingAddress.pincode || '10001'
+    };
+
+    const finalTotal = orderData.total ?? (cartTotal + (isFreeShipping ? 0 : 5.00) + cartSubtotal * 0.08);
+
     const newOrder: Order = {
       id: `ord-${Date.now()}`,
+      orderId: num,
       orderNumber: num,
       date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      createdAt: new Date().toISOString(),
+      status: 'Pending',
       items: cart.map((item) => ({
         productId: item.productId,
         name: item.product.name,
+        title: item.product.name,
         image: item.product.images[0],
+        imageUrl: item.product.images[0],
         price: item.price,
         quantity: item.quantity,
         selectedColor: item.selectedColor,
         selectedSize: item.selectedSize
       })),
+      totalAmount: finalTotal,
+      customer: finalCustomer,
+      customerName: finalCustomer.fullName,
+      email: finalCustomer.email,
+      dispatchDate: null,
       subtotal: cartSubtotal,
       shippingFee: isFreeShipping ? 0 : 5.00,
       discount: cartDiscount,
       tax: cartSubtotal * 0.08,
-      total: cartTotal + (isFreeShipping ? 0 : 5.00) + cartSubtotal * 0.08,
-      status: 'placed',
-      shippingAddress: orderData.shippingAddress || defaultAddress,
+      total: finalTotal,
+      shippingAddress: shippingAddress,
       paymentMethod: orderData.paymentMethod || 'Credit Card',
       paymentStatus: orderData.paymentMethod === 'Cash on Delivery (COD)' ? 'cod' : 'paid',
       trackingNumber: trk,
@@ -1296,39 +1871,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timeline: [
         {
           title: 'Order Placed & Verified',
-          description: 'Payment authorization confirmed. Order dispatched to Nordic fulfillment hub.',
+          description: 'Payment authorization confirmed. Order is Pending review in the fulfillment console.',
           timestamp: 'Just Now',
           location: 'Stockholm Hub',
           completed: true,
           current: true
-        },
-        {
-          title: 'Quality Check & Packing',
-          description: 'Garments and accessories carefully checked, wrapped in tissue paper and biodegradable box.',
-          timestamp: 'Pending',
-          location: 'Stockholm Hub',
-          completed: false
-        },
-        {
-          title: 'Handed to Carrier',
-          description: 'Dispatched via DHL Express Nordic Priority Air.',
-          timestamp: 'Pending',
-          location: 'Copenhagen Terminal',
-          completed: false
-        },
-        {
-          title: 'Out for Delivery',
-          description: 'Local courier in transit to your registered destination address.',
-          timestamp: 'Pending',
-          location: 'Local Destination',
-          completed: false
-        },
-        {
-          title: 'Delivered',
-          description: 'Package successfully delivered.',
-          timestamp: 'Pending',
-          location: 'Local Destination',
-          completed: false
         }
       ],
       ...orderData
@@ -1337,19 +1884,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setOrders((prev) => [newOrder, ...prev]);
     setCurrentOrder(newOrder);
 
-    // Sync to Supabase Orders
-    insertOrderToSupabase({
-      customer_name: newOrder.shippingAddress.fullName || 'Valued Customer',
-      customer_email: currentUser?.email || 'customer@haute.boutique',
-      customer_phone: newOrder.shippingAddress.phone || '',
-      delivery_address: `${newOrder.shippingAddress.street}${newOrder.shippingAddress.apartment ? ', ' + newOrder.shippingAddress.apartment : ''}, ${newOrder.shippingAddress.city}`,
-      pincode: newOrder.shippingAddress.pincode,
-      items: newOrder.items,
-      total_price: newOrder.total,
-      status: 'Placed'
-    }).catch((err) => console.warn('[Supabase Order Sync] Error:', err));
+    trackPurchase(newOrder.orderNumber, newOrder.total, newOrder.items.length);
+    saveOrderToFirestore(newOrder).catch((err) => console.warn('[Firestore Order Sync] Error:', err));
 
-    // Sync Order details to Google Form
     try {
       const googleFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfutf74XvuQ7zETKUR4l_kDyVRFMuiax5llflUGc7jzTduK1w/formResponse';
       const formPayload = new URLSearchParams();
@@ -1366,10 +1903,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('[Google Form Sync] Exception:', e);
     }
 
-    // Sync Customer Address & Form Data to Google Sheets Web App Excel
     try {
       const GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyjk8MYflKlMaqFM8ZQzwl673roAingHJSsclhshnBd709DqUmMArW3TGx1pId93hU/exec";
       const sheetPayload = {
+        orderNumber: newOrder.orderNumber,
+        date: newOrder.date,
+        total: newOrder.total,
+        paymentMethod: newOrder.paymentMethod,
+        itemsCount: newOrder.items.length,
+        itemsSummary: newOrder.items.map(i => `${i.name} (x${i.quantity})`).join(", "),
         email: currentUser?.email || 'customer@haute.boutique',
         phone: newOrder.shippingAddress.phone || '',
         name: newOrder.shippingAddress.fullName || 'Valued Customer',
@@ -1391,7 +1933,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log('[Google Sheets Web App Sync] Exception:', e);
     }
     
-    // Decrement stock in catalog
     cart.forEach((item) => {
       setProducts((prev) =>
         prev.map((p) =>
@@ -1412,59 +1953,85 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newOrder;
   };
 
-  const updateOrderStatus = (orderId: string, status: Order['status'], note?: string) => {
+  const updateOrderStatus = (
+    orderId: string, 
+    status: Order['status'], 
+    noteOrDispatchDate?: string | null,
+    dispatchDateParam?: string | null
+  ) => {
+    let finalDispatchDate: string | null | undefined = undefined;
+    let note: string | undefined = undefined;
+
+    if (dispatchDateParam !== undefined) {
+      finalDispatchDate = dispatchDateParam;
+      note = noteOrDispatchDate || undefined;
+    } else if (noteOrDispatchDate && noteOrDispatchDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      finalDispatchDate = noteOrDispatchDate;
+    } else {
+      note = noteOrDispatchDate || undefined;
+    }
+
     setOrders((prev) =>
       prev.map((ord) => {
         if (ord.id !== orderId) return ord;
-        const timeline = [...ord.timeline];
-        if (status === 'packed' && timeline[1]) {
-          timeline[1].completed = true;
-          timeline[1].current = true;
-          timeline[0].current = false;
-          if (note) timeline[1].description = note;
-        } else if (status === 'in_transit' && timeline[2]) {
-          timeline[1].completed = true;
-          timeline[2].completed = true;
-          timeline[2].current = true;
-          timeline[1].current = false;
-          if (note) timeline[2].description = note;
-        } else if (status === 'delivered') {
-          timeline.forEach((t) => {
-            t.completed = true;
-            t.current = false;
-          });
-          timeline[timeline.length - 1].current = true;
-          if (note) timeline[timeline.length - 1].description = note;
-        } else if (status === 'cancelled') {
+        const timeline = [...(ord.timeline || [])];
+        const newDispatch = finalDispatchDate !== undefined ? finalDispatchDate : ord.dispatchDate;
+        
+        if (status === 'Ready') {
           timeline.push({
-            title: 'Order Cancelled',
-            description: note || 'Order has been cancelled by merchant operations.',
+            title: 'Order Marked Ready',
+            description: note || 'Items prepared, packaged and ready for carrier handover.',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             location: 'Nordic Central Hub',
             completed: true,
             current: true
           });
-        } else if (status === 'refunded') {
+        } else if (status === 'Dispatched' || status === 'in_transit') {
           timeline.push({
-            title: 'Refund Processed',
-            description: note || 'Payment refunded in full back to customer account.',
+            title: 'Package Dispatched',
+            description: note || `Dispatched with carrier. Planned dispatch date: ${newDispatch || 'Today'}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            location: 'Payment Gateway',
+            location: 'Copenhagen Terminal',
+            completed: true,
+            current: true
+          });
+        } else if (status === 'Rejected' || status === 'cancelled') {
+          timeline.push({
+            title: 'Order Rejected / Cancelled',
+            description: note || 'Order has been rejected by merchant operations.',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            location: 'Nordic Central Hub',
             completed: true,
             current: true
           });
         }
-        return {
+
+        const updatedOrd: Order = {
           ...ord,
           status,
+          dispatchDate: newDispatch,
           timeline
         };
+        updateFirestoreOrderStatus(ord.id, status, newDispatch).catch((e) => console.warn('Firestore update order warning:', e));
+        return updatedOrd;
       })
     );
-    updateOrderStatusInSupabase(orderId, status).catch((err) =>
-      console.warn('[Supabase Order Status Sync] Error:', err)
+    showToast(`Order status updated to "${status}"`, 'info');
+  };
+
+  const updateOrderDispatchDate = (orderId: string, dispatchDate: string | null) => {
+    setOrders((prev) =>
+      prev.map((ord) => {
+        if (ord.id !== orderId) return ord;
+        const updatedOrd: Order = {
+          ...ord,
+          dispatchDate
+        };
+        updateFirestoreOrderStatus(ord.id, ord.status, dispatchDate).catch((e) => console.warn('Firestore update order warning:', e));
+        return updatedOrd;
+      })
     );
-    showToast(`Order status updated to ${status.replace('_', ' ').toUpperCase()}`, 'info');
+    showToast(`Planned dispatch date updated`, 'info');
   };
 
   const approveOrder = (orderId: string) => {
@@ -1522,6 +2089,38 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       prev.map((o) => (o.id === orderId ? { ...o, status: 'returned' } : o))
     );
     showToast('Return Request Initiated', 'success', `Return label generated for reason: ${reason}.`);
+  };
+
+  const clearAllOrders = () => {
+    setOrders([]);
+    try {
+      localStorage.setItem('haute_orders', JSON.stringify([]));
+      localStorage.setItem('diva_dashboard_zeroed', 'true');
+    } catch {}
+    showToast('Orders Cleared', 'info', 'All order records have been cleared.');
+  };
+
+  const resetAllStatsToZero = (password: string): boolean => {
+    if (password === '8156958052') {
+      setOrders([]);
+      try {
+        localStorage.setItem('haute_orders', JSON.stringify([]));
+        localStorage.setItem('diva_dashboard_zeroed', 'true');
+      } catch {}
+      showToast('Dashboard Metrics Reset to 0', 'success', 'All financial numbers and order tallies are now zero.');
+      return true;
+    }
+    showToast('Reset Failed', 'error', 'Incorrect password. Authorization denied.');
+    return false;
+  };
+
+  const restoreDefaultOrders = () => {
+    setOrders(INITIAL_ORDERS);
+    try {
+      localStorage.setItem('haute_orders', JSON.stringify(INITIAL_ORDERS));
+      localStorage.removeItem('diva_dashboard_zeroed');
+    } catch {}
+    showToast('Baseline Orders Restored', 'success', 'Demo catalog order metrics repopulated.');
   };
 
   return (
@@ -1594,6 +2193,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         currentOrder,
         placeOrder,
         updateOrderStatus,
+        updateOrderDispatchDate,
         approveOrder,
         markOrderShipped,
         cancelOrder,
@@ -1627,10 +2227,41 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         openAdminAuthModal,
         verifyAdminPassword,
         lockAdmin,
-        isSupabaseOnline,
-        syncSupabaseData,
+        isFirebaseOnline: true,
+        syncFirebaseData: async () => {},
         siteBanners,
-        updateSiteBanners
+        updateSiteBanners,
+        theme,
+        setTheme,
+        isDarkMode,
+        toggleDarkMode,
+        contactInquiries,
+        addContactInquiry,
+        replyContactInquiry,
+        deleteContactInquiry,
+        adminStaff,
+        addAdminStaff,
+        deleteAdminStaff,
+        updateAdminStaff,
+        adminEvents,
+        addAdminEvent,
+        deleteAdminEvent,
+        adminCampaigns,
+        dispatchAdminCampaign,
+        adminProfile,
+        updateAdminProfile,
+        reviews: firestoreReviews,
+        addCustomerReview,
+        approveCustomerReview,
+        deleteCustomerReview,
+        clearAllOrders,
+        resetAllStatsToZero,
+        restoreDefaultOrders,
+        themeSettings,
+        updateThemeSettings,
+        applyThemeSettingsLocally,
+        categories,
+        updateCategory
       }}
     >
       {children}

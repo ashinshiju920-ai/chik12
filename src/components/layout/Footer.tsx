@@ -12,39 +12,35 @@ import {
   MapPin,
   Phone
 } from 'lucide-react';
-import { DivaChikLogo } from '../common/DivaChikLogo';
+import { DivaChicLogo } from '../common/DivaChikLogo';
 
 export const Footer: React.FC = () => {
-  const { 
-    setActivePage, 
-    setSelectedCategory, 
-    showToast,
-    openAdminAuthModal,
-    isAdminAuthenticated
-  } = useStore();
+  const { setActivePage, setSelectedCategory, openAdminAuthModal, showToast } = useStore();
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
-
-  const handleAdminSecretTrigger = () => {
-    if (isAdminAuthenticated) {
-      setActivePage('admin');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      openAdminAuthModal();
-    }
-  };
+  const [adminClickCount, setAdminClickCount] = useState(0);
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) {
-      showToast('Please enter a valid email address', 'warning');
+      showToast('Please enter a valid email address', 'error');
       return;
     }
     setSubscribed(true);
-    showToast('Subscribed to Diva\'Chik Gazette!', 'success', 'You will receive our bespoke couture drops and 10% welcome promo.');
+    showToast('Subscribed to DivaChic Gazette!', 'success', '10% welcome coupon applied.');
+    setEmail('');
   };
 
-  const navTo = (page: any, category?: any) => {
+  const handleAdminSecretTrigger = () => {
+    const nextCount = adminClickCount + 1;
+    setAdminClickCount(nextCount);
+    if (nextCount >= 3) {
+      setAdminClickCount(0);
+      openAdminAuthModal();
+    }
+  };
+
+  const navigateTo = (page: any, category?: any) => {
     if (category) setSelectedCategory(category);
     setActivePage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -58,17 +54,17 @@ export const Footer: React.FC = () => {
           {/* Column 1: Brand Bio & Studio Headquarters */}
           <div className="space-y-4">
             <div className="pt-1">
-              <DivaChikLogo variant="full" size="md" theme="dark" showSubtitle={true} subtitleText="HAUTE COUTURE & LIFESTYLE" />
+              <DivaChicLogo variant="full" size="md" theme="auto" showSubtitle={true} subtitleText="HAUTE COUTURE & LIFESTYLE" />
             </div>
             <p className="text-xs leading-relaxed text-[#6E685F] max-w-sm pt-1">
-              Diva'Chik celebrates bold femininity, timeless silhouettes, and bespoke couture essentials meticulously crafted for the modern visionary.
+              DivaChic celebrates bold femininity, timeless silhouettes, and bespoke couture essentials meticulously crafted for the modern visionary.
             </p>
 
             {/* Studio Headquarters Trust Box */}
             <div className="p-3.5 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xs space-y-1.5 text-xs text-[#4A453C]">
               <div className="font-bold text-[#1F1F1F] flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-[#C85A32]" />
-                <span>Diva'Chik Studio Headquarters</span>
+                <span>DivaChic Studio Headquarters</span>
               </div>
               <p className="text-[11px] text-[#6E685F] leading-snug">
                 #42, 100 Feet Ring Road, Stage 2, BTM Layout<br />
@@ -88,92 +84,87 @@ export const Footer: React.FC = () => {
 
             {/* Social Icons */}
             <div className="flex items-center space-x-3 pt-1">
-              <a
-                href="#facebook"
-                onClick={(e) => { e.preventDefault(); showToast('Connecting to Diva\'Chik Facebook...', 'info'); }}
-                aria-label="Facebook"
-                className="w-8 h-8 rounded-full bg-[#F5F3EF] hover:bg-[#C85A32] hover:text-white flex items-center justify-center transition-colors text-[#1F1F1F]"
-              >
+              <a href="#" className="w-8 h-8 rounded-full bg-[#FAF9F6] border border-[#EAE6DE] flex items-center justify-center text-[#6E685F] hover:bg-[#C85A32] hover:text-white hover:border-[#C85A32] transition-colors" aria-label="Instagram">
+                <Instagram className="w-4 h-4" />
+              </a>
+              <a href="#" className="w-8 h-8 rounded-full bg-[#FAF9F6] border border-[#EAE6DE] flex items-center justify-center text-[#6E685F] hover:bg-[#C85A32] hover:text-white hover:border-[#C85A32] transition-colors" aria-label="Facebook">
                 <Facebook className="w-4 h-4" />
               </a>
-              <a
-                href="#twitter"
-                onClick={(e) => { e.preventDefault(); showToast('Connecting to Diva\'Chik X...', 'info'); }}
-                aria-label="Twitter"
-                className="w-8 h-8 rounded-full bg-[#F5F3EF] hover:bg-[#C85A32] hover:text-white flex items-center justify-center transition-colors text-[#1F1F1F]"
-              >
+              <a href="#" className="w-8 h-8 rounded-full bg-[#FAF9F6] border border-[#EAE6DE] flex items-center justify-center text-[#6E685F] hover:bg-[#C85A32] hover:text-white hover:border-[#C85A32] transition-colors" aria-label="Twitter">
                 <Twitter className="w-4 h-4" />
-              </a>
-              <a
-                href="#instagram"
-                onClick={(e) => { e.preventDefault(); showToast('Connecting to Diva\'Chik Instagram...', 'info'); }}
-                aria-label="Instagram"
-                className="w-8 h-8 rounded-full bg-[#F5F3EF] hover:bg-[#C85A32] hover:text-white flex items-center justify-center transition-colors text-[#1F1F1F]"
-              >
-                <Instagram className="w-4 h-4" />
               </a>
             </div>
           </div>
 
-          {/* Column 2: Navigate */}
-          <div>
-            <h4 className="text-base font-semibold text-[#1F1F1F] mb-4">Navigate</h4>
-            <ul className="space-y-2.5 text-sm">
+          {/* Column 2: Quick Links */}
+          <div className="space-y-4">
+            <h4 className="text-base font-semibold text-[#1F1F1F]">Maison Directory</h4>
+            <ul className="space-y-2.5 text-xs">
               <li>
-                <button onClick={() => navTo('home')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Home
+                <button onClick={() => navigateTo('home')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Haute Runway Home
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('shop', 'all')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Catalog
+                <button onClick={() => navigateTo('about')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  About Our Maison
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('about')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  About
+                <button onClick={() => navigateTo('lookbook')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Editorial Lookbook
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('contact')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Contact
+                <button onClick={() => navigateTo('tracking')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Track Consignment
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('blog')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Journal
+                <button onClick={() => navigateTo('contact')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Studio Concierge
+                </button>
+              </li>
+              <li>
+                <button onClick={() => navigateTo('blog')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  DivaChic Gazette
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Informations */}
-          <div>
-            <h4 className="text-base font-semibold text-[#1F1F1F] mb-4">Informations</h4>
-            <ul className="space-y-2.5 text-sm">
+          {/* Column 3: Categories */}
+          <div className="space-y-4">
+            <h4 className="text-base font-semibold text-[#1F1F1F]">Collections</h4>
+            <ul className="space-y-2.5 text-xs">
               <li>
-                <button onClick={() => navTo('tracking')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Delivery & Shipping
+                <button onClick={() => navigateTo('shop', 'all')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  All Runway Items
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('contact')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Return Policy
+                <button onClick={() => navigateTo('shop', 'backpack')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Bags & Backpacks
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('about')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Team & Founders
+                <button onClick={() => navigateTo('shop', 'shoes')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Footwear & Boots
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('contact')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  Store Locations
+                <button onClick={() => navigateTo('shop', 'glasses')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Eyewear & Titanium Optics
                 </button>
               </li>
               <li>
-                <button onClick={() => navTo('contact')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
-                  F.A.Qs
+                <button onClick={() => navigateTo('shop', 'hats')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Headwear & Berets
+                </button>
+              </li>
+              <li>
+                <button onClick={() => navigateTo('shop', 'apparel')} className="hover:text-[#C85A32] transition-colors cursor-pointer">
+                  Apparel & Outerwear
                 </button>
               </li>
             </ul>
@@ -189,7 +180,7 @@ export const Footer: React.FC = () => {
             {subscribed ? (
               <div className="p-3.5 bg-[#F4F8F6] border border-[#C5E1D4] text-[#1E5638] rounded-xs text-xs flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 shrink-0 text-[#2C5E55]" />
-                <span>You are subscribed to Diva'Chik Gazette! Check your inbox for your 10% code.</span>
+                <span>You are subscribed to DivaChic Gazette! Check your inbox for your 10% code.</span>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="space-y-2.5">
@@ -198,7 +189,7 @@ export const Footer: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="concierge@divachik.com"
+                    placeholder="concierge@divachic.com"
                     className="w-full px-3.5 py-2.5 bg-white border border-[#D5D0C5] text-sm text-[#1F1F1F] placeholder:text-[#9E978C] focus:outline-none focus:border-[#C85A32] rounded-xs"
                     required
                   />
@@ -211,16 +202,13 @@ export const Footer: React.FC = () => {
                 </button>
               </form>
             )}
-            <p className="text-[11px] text-[#9A9386]">
-              By subscribing you agree with our Privacy Policy and Terms of Service.
-            </p>
           </div>
         </div>
 
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#8A8478]">
           <p className="select-none">
-            © 2026 Diva'Chik. All Rights Reserved.{' '}
+            © 2026 DivaChic. All Rights Reserved.{' '}
             <button
               onClick={handleAdminSecretTrigger}
               className="text-[#8A8478] hover:text-[#1F1F1F] transition-colors cursor-pointer inline focus:outline-none ml-1 underline decoration-dotted"

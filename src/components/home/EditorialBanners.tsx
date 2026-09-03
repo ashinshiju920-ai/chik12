@@ -32,19 +32,19 @@ export const EditorialBanners: React.FC = () => {
       <section className="relative w-full bg-[#1F1F1F] text-white overflow-hidden">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 min-h-[460px]">
           <div className="lg:col-span-6 flex flex-col justify-center px-8 sm:px-14 py-16 z-10">
-            <span className="text-xs font-semibold tracking-widest text-[#C85A32] uppercase mb-2">
+            <span className="font-sans text-[11px] font-semibold tracking-[0.22em] text-[#C85A32] uppercase mb-3">
               Nordic Philosophy
             </span>
-            <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight uppercase font-sans mb-4">
+            <h2 className="text-4xl sm:text-5xl font-serif font-medium tracking-tight leading-[1.15] mb-4 text-white">
               {editorialTitle}
             </h2>
-            <p className="text-sm text-white/75 leading-relaxed max-w-md font-light mb-8">
+            <p className="font-sans text-sm text-white/80 leading-relaxed max-w-md font-normal mb-8">
               {editorialSubtitle}
             </p>
             <div>
               <button
                 onClick={handleApparelClick}
-                className="inline-flex items-center gap-2 border border-white hover:border-[#C85A32] bg-transparent hover:bg-[#C85A32] text-white text-xs font-semibold tracking-widest uppercase px-7 py-3.5 rounded-xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 border border-white hover:border-[#C85A32] bg-transparent hover:bg-[#C85A32] text-white font-sans text-xs font-semibold tracking-[0.2em] uppercase px-7 py-3.5 rounded-xs transition-colors cursor-pointer"
               >
                 <span>EXPLORE EDITORIAL</span>
                 <ArrowRight className="w-4 h-4" />
@@ -77,18 +77,18 @@ export const EditorialBanners: React.FC = () => {
           </div>
 
           <div className="md:col-span-6 flex flex-col justify-center items-center text-center p-8 sm:p-14 bg-[#FAF9F6]">
-            <span className="text-[11px] font-bold text-[#C85A32] uppercase tracking-widest mb-2">
+            <span className="font-sans text-[11px] font-semibold text-[#C85A32] uppercase tracking-[0.22em] mb-2">
               #glasses #optics
             </span>
-            <h2 className="text-3xl sm:text-4xl font-semibold text-[#1F1F1F] font-editorial mb-3">
+            <h2 className="text-3xl sm:text-4xl font-serif font-medium text-[#1F1F1F] tracking-tight mb-3">
               {eyewearTitle}
             </h2>
-            <p className="text-sm text-[#736B5E] max-w-md mb-6 leading-relaxed">
+            <p className="font-sans text-sm text-[#736B5E] max-w-md mb-6 leading-relaxed font-normal">
               {eyewearSubtitle}
             </p>
             <button
               onClick={handleEyewearClick}
-              className="underline font-semibold text-sm text-[#1F1F1F] hover:text-[#C85A32] transition-colors cursor-pointer tracking-wide"
+              className="underline font-sans font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] transition-colors cursor-pointer uppercase tracking-[0.18em]"
             >
               View Collection
             </button>
@@ -112,15 +112,15 @@ export const EditorialBanners: React.FC = () => {
               />
             </div>
             <div className="p-8 text-center flex-1 flex flex-col justify-center items-center">
-              <h3 className="text-2xl font-semibold text-[#1F1F1F] font-editorial mb-2">
+              <h3 className="text-2xl font-serif font-medium text-[#1F1F1F] tracking-tight mb-2">
                 Weekend Collective
               </h3>
-              <p className="text-xs text-[#7A7264] max-w-sm mb-4 leading-relaxed">
+              <p className="font-sans text-xs text-[#7A7264] max-w-sm mb-4 leading-relaxed font-normal">
                 Largest collection of genuine quality prescription glasses frames & casual loungewear.
               </p>
               <button
                 onClick={handleApparelClick}
-                className="underline font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] tracking-wider uppercase cursor-pointer"
+                className="underline font-sans font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] tracking-[0.18em] uppercase cursor-pointer"
               >
                 Shop Now
               </button>
@@ -138,15 +138,15 @@ export const EditorialBanners: React.FC = () => {
               />
             </div>
             <div className="p-8 text-center flex-1 flex flex-col justify-center items-center">
-              <h3 className="text-2xl font-semibold text-[#1F1F1F] font-editorial mb-2">
+              <h3 className="text-2xl font-serif font-medium text-[#1F1F1F] tracking-tight mb-2">
                 It’s Cold Outside
               </h3>
-              <p className="text-xs text-[#7A7264] max-w-sm mb-4 leading-relaxed">
+              <p className="font-sans text-xs text-[#7A7264] max-w-sm mb-4 leading-relaxed font-normal">
                 Curated collection of our favorite holiday style, warm merino knits, and marigold puffers.
               </p>
               <button
                 onClick={handleApparelClick}
-                className="underline font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] tracking-wider uppercase cursor-pointer"
+                className="underline font-sans font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] tracking-[0.18em] uppercase cursor-pointer"
               >
                 Check It Out
               </button>

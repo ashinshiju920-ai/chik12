@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export const EditorialPages: React.FC<{ type: 'about' | 'blog' | 'contact' }> = ({ type }) => {
-  const { showToast, setActivePage } = useStore();
+  const { showToast, setActivePage, addContactInquiry } = useStore();
 
   // Contact Form State
   const [contactName, setContactName] = useState('');
@@ -32,8 +32,15 @@ export const EditorialPages: React.FC<{ type: 'about' | 'blog' | 'contact' }> = 
       return;
     }
 
-    // Auto-Sync Contact Submission to Google Form
+    // Auto-Sync Contact Submission to Google Form & StoreContext Inquiries
     try {
+      addContactInquiry({
+        name: contactName,
+        email: contactEmail,
+        subject: contactSubject || 'Client Atelier Inquiry',
+        message: contactMessage
+      });
+
       const googleFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfutf74XvuQ7zETKUR4l_kDyVRFMuiax5llflUGc7jzTduK1w/formResponse';
       const formPayload = new URLSearchParams();
       formPayload.append('entry.1788172552', contactName);
@@ -50,7 +57,7 @@ export const EditorialPages: React.FC<{ type: 'about' | 'blog' | 'contact' }> = 
     }
 
     setTicketSubmitted(true);
-    showToast('Inquiry received & synced to Google Form!', 'success');
+    showToast('Inquiry received & logged to Admin Console!', 'success');
   };
 
   // ABOUT US
@@ -64,17 +71,17 @@ export const EditorialPages: React.FC<{ type: 'about' | 'blog' | 'contact' }> = 
               Our Heritage & Craft
             </span>
             <h1 className="text-4xl sm:text-5xl font-semibold text-[#1F1F1F] font-editorial leading-tight">
-              Diva'Chik: Bespoke Haute Couture & Visionary Design
+              DivaChic: Bespoke Haute Couture & Visionary Design
             </h1>
             <p className="text-sm text-[#736B5E] leading-relaxed">
-              Diva'Chik was established with a singular ambition: to curate exquisite, runway-inspired silhouettes and timeless wardrobe investments that celebrate confidence, poise, and uncompromising craftsmanship.
+              DivaChic was established with a singular ambition: to curate exquisite, runway-inspired silhouettes and timeless wardrobe investments that celebrate confidence, poise, and uncompromising craftsmanship.
             </p>
           </div>
 
           <div className="relative aspect-[16/9] rounded-xs overflow-hidden shadow-sm">
             <img
               src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1600&auto=format&fit=crop"
-              alt="Diva'Chik Atelier & Flagship"
+              alt="DivaChic Atelier & Flagship"
               className="w-full h-full object-cover"
             />
           </div>
@@ -157,7 +164,7 @@ export const EditorialPages: React.FC<{ type: 'about' | 'blog' | 'contact' }> = 
           
           <div className="text-center space-y-3">
             <span className="text-[11px] font-bold text-[#C85A32] uppercase tracking-widest">
-              The Diva'Chik Gazette
+              The DivaChic Gazette
             </span>
             <h1 className="text-3xl sm:text-4xl font-semibold text-[#1F1F1F] font-editorial">
               Stories of Craftsmanship, Couture & Design
@@ -231,14 +238,14 @@ export const EditorialPages: React.FC<{ type: 'about' | 'blog' | 'contact' }> = 
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white p-6 border border-[#EAE6DE] rounded-xs shadow-xs space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-wider text-[#1F1F1F]">
-                Diva'Chik Flagship Studio
+                DivaChic Flagship Studio
               </h3>
 
               <div className="space-y-3 text-xs text-[#555048]">
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#C85A32] mt-0.5 shrink-0" />
                   <div>
-                    <strong className="text-[#1F1F1F]">Diva'Chik Studio Headquarters:</strong>
+                    <strong className="text-[#1F1F1F]">DivaChic Studio Headquarters:</strong>
                     <p>#42, 100 Feet Ring Road, Stage 2, BTM Layout, South Bangalore, Karnataka — 560076</p>
                   </div>
                 </div>

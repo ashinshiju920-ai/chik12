@@ -18,7 +18,7 @@
   <rect width="512" height="512" rx="128" fill="url(#bgGrad)"/>
   <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="url(#goldGrad)" stroke-width="4" opacity="0.6"/>
 
-  <!-- Center Luxury Diva'Chik Monogram 'D' with Silhouette Aesthetics -->
+  <!-- Center Luxury DivaChic Monogram 'D' with Silhouette Aesthetics -->
   <g transform="translate(60, 40)" filter="url(#glow)">
     <!-- Stylized D with Silhouette Profile Accent -->
     <path d="M 60 80 L 170 80 C 270 80 340 140 340 220 C 340 300 270 360 170 360 L 60 360 Z M 120 135 L 120 305 L 165 305 C 230 305 275 270 275 220 C 275 170 230 135 165 135 Z" fill="url(#goldGrad)"/>

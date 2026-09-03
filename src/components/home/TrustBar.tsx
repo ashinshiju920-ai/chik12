@@ -39,10 +39,10 @@ export const TrustBar: React.FC = () => {
                 <div className="w-16 h-16 rounded-full bg-white/5 group-hover:bg-[#C85A32]/20 border border-white/10 flex items-center justify-center mb-5 transition-all duration-300">
                   <Icon className="w-7 h-7 text-white group-hover:text-[#C85A32] transition-colors stroke-[1.5]" />
                 </div>
-                <h3 className="text-base font-semibold tracking-wide text-white mb-1.5 font-sans">
+                <h3 className="font-sans font-semibold text-base tracking-wide text-white">
                   {p.title}
                 </h3>
-                <p className="text-xs text-white/70 max-w-xs leading-relaxed font-light">
+                <p className="font-sans text-xs text-neutral-400 leading-relaxed font-light mt-1 max-w-xs">
                   {p.desc}
                 </p>
               </div>

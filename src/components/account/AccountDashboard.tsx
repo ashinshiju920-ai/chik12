@@ -107,7 +107,7 @@ export const AccountDashboard: React.FC = () => {
             />
             <div>
               <span className="text-[11px] font-bold text-[#C85A32] uppercase tracking-widest">
-                Diva'Chik Privé VIP
+                DivaChic Privé VIP
               </span>
               <h1 className="text-2xl font-semibold text-[#1F1F1F] font-editorial">
                 {currentUser?.name || 'Valued Member'}
@@ -221,21 +221,28 @@ export const AccountDashboard: React.FC = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#F0ECE1] text-xs">
                         <div>
                           <span className="text-[#8C8477]">Order Number: </span>
-                          <strong className="text-[#1F1F1F] font-mono text-sm">#{ord.orderNumber}</strong>
+                          <strong className="text-[#1F1F1F] font-mono text-sm">#{ord.orderNumber || ord.orderId}</strong>
                           <span className="text-[#8C8477] ml-2">({ord.date})</span>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <span
-                            className={`px-2.5 py-0.5 rounded-xs font-semibold text-[11px] uppercase ${
-                              ord.status === 'delivered'
-                                ? 'bg-[#EBF5EF] text-[#1E5638]'
-                                : ord.status === 'returned'
-                                ? 'bg-orange-50 text-orange-700'
-                                : 'bg-[#FAF1ED] text-[#C85A32]'
+                            className={`px-3 py-1 rounded-full font-bold text-[10px] uppercase font-mono border flex items-center gap-1.5 ${
+                              ord.status === 'Ready' || ord.status === 'packed'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : ord.status === 'Dispatched' || ord.status === 'in_transit' || ord.status === 'out_for_delivery'
+                                ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                                : ord.status === 'Accepted'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : ord.status === 'Yet to be Sent'
+                                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                : ord.status === 'Rejected' || ord.status === 'cancelled'
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
                             }`}
                           >
-                            {ord.status.replace('_', ' ')}
+                            <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                            <span>{ord.status}</span>
                           </span>
 
                           <button
@@ -257,14 +264,14 @@ export const AccountDashboard: React.FC = () => {
                           <div key={idx} className="py-2.5 first:pt-0 flex items-center justify-between text-xs">
                             <div className="flex items-center gap-3">
                               <img
-                                src={item.image}
-                                alt={item.name}
+                                src={item.imageUrl || item.image || 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=200&auto=format&fit=crop'}
+                                alt={item.title || item.name}
                                 className="w-12 h-12 object-cover rounded-xs border border-[#EAE6DE]"
                               />
                               <div>
-                                <p className="font-semibold text-[#1F1F1F]">{item.name}</p>
+                                <p className="font-semibold text-[#1F1F1F]">{item.title || item.name}</p>
                                 <p className="text-[11px] text-[#8C8477]">
-                                  Qty: {item.quantity} {item.selectedColor ? `| ${item.selectedColor}` : ''}
+                                  Qty: {item.quantity} {item.selectedColor ? `| ${item.selectedColor}` : ''} {item.selectedSize ? `| ${item.selectedSize}` : ''}
                                 </p>
                               </div>
                             </div>
@@ -275,33 +282,45 @@ export const AccountDashboard: React.FC = () => {
                         ))}
                       </div>
 
-                      {/* Shipment Tracking Progress Bar */}
+                      {/* Shipment & Real-Time Dispatch Info */}
                       <div className="bg-[#FAF9F6] p-4 border border-[#EAE6DE] rounded-xs space-y-3">
-                        <div className="flex justify-between items-center text-xs">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 text-xs">
                           <div>
                             <span className="text-[#8C8477]">Carrier: </span>
                             <strong>{ord.carrier}</strong> | 
                             <span className="text-[#8C8477] ml-1">Track #: </span>
                             <span className="font-mono text-[#C85A32]">{ord.trackingNumber}</span>
                           </div>
-                          <span className="text-[11px] text-[#1E5638] font-semibold">
-                            Est. {ord.estimatedDeliveryDate}
-                          </span>
+                          
+                          {/* Live Scheduled Dispatch Date */}
+                          {ord.dispatchDate ? (
+                            <span className="text-[11px] text-emerald-800 font-bold bg-emerald-100/70 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1 self-start sm:self-auto">
+                              <Clock className="w-3 h-3" />
+                              <span>Planned Dispatch: {ord.dispatchDate}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-[#1E5638] font-semibold">
+                              Est. {ord.estimatedDeliveryDate}
+                            </span>
+                          )}
                         </div>
 
-                        {/* Visual Progress Steps */}
-                        <div className="grid grid-cols-4 gap-1 pt-1 text-[10px] text-center">
-                          <div className={`py-1 rounded-xs ${ord.status !== 'cancelled' ? 'bg-[#1E5638] text-white font-medium' : 'bg-gray-200'}`}>
+                        {/* Visual Progress Steps (Aligned to Canonical Real-Time Flow) */}
+                        <div className="grid grid-cols-5 gap-1 pt-1 text-[9px] sm:text-[10px] text-center font-semibold">
+                          <div className={`py-1 rounded-xs ${ord.status !== 'Rejected' && ord.status !== 'cancelled' ? 'bg-[#1E5638] text-white' : 'bg-gray-200 text-gray-500'}`}>
                             Placed
                           </div>
-                          <div className={`py-1 rounded-xs ${['packed', 'in_transit', 'out_for_delivery', 'delivered'].includes(ord.status) ? 'bg-[#1E5638] text-white font-medium' : 'bg-gray-200 text-gray-500'}`}>
-                            Packed
+                          <div className={`py-1 rounded-xs ${['Accepted', 'Yet to be Sent', 'Ready', 'Dispatched', 'in_transit', 'out_for_delivery', 'delivered'].includes(ord.status) ? 'bg-[#1E5638] text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            Accepted
                           </div>
-                          <div className={`py-1 rounded-xs ${['in_transit', 'out_for_delivery', 'delivered'].includes(ord.status) ? 'bg-[#1E5638] text-white font-medium' : 'bg-gray-200 text-gray-500'}`}>
-                            In Transit
+                          <div className={`py-1 rounded-xs ${['Yet to be Sent', 'Ready', 'Dispatched', 'in_transit', 'out_for_delivery', 'delivered'].includes(ord.status) ? 'bg-[#1E5638] text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            Processing
                           </div>
-                          <div className={`py-1 rounded-xs ${ord.status === 'delivered' ? 'bg-[#1E5638] text-white font-medium' : 'bg-gray-200 text-gray-500'}`}>
-                            Delivered
+                          <div className={`py-1 rounded-xs ${['Ready', 'Dispatched', 'in_transit', 'out_for_delivery', 'delivered'].includes(ord.status) ? 'bg-[#1E5638] text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            Ready
+                          </div>
+                          <div className={`py-1 rounded-xs ${['Dispatched', 'in_transit', 'out_for_delivery', 'delivered'].includes(ord.status) ? 'bg-[#1E5638] text-white' : 'bg-gray-200 text-gray-500'}`}>
+                            Dispatched
                           </div>
                         </div>
                       </div>
@@ -581,7 +600,7 @@ export const AccountDashboard: React.FC = () => {
             {activeTab === 'returns' && (
               <div className="bg-white p-6 sm:p-8 border border-[#EAE6DE] rounded-xs space-y-6">
                 <h2 className="text-xl font-semibold text-[#1F1F1F] font-editorial">
-                  Diva'Chik 7-Day Easy Return & Exchange Policy
+                  DivaChic 7-Day Easy Return & Exchange Policy
                 </h2>
                 <div className="text-xs text-[#555048] space-y-3 leading-relaxed">
                   <p>

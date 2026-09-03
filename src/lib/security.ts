@@ -265,14 +265,17 @@ export function sanitizeMediaUrl(url: string, fallback = 'https://images.unsplas
  * Safe JSON Parse with fallback and prototype pollution defense
  */
 export function safeJsonParse<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
+  if (!raw || raw === 'undefined' || raw === 'null') return fallback;
   try {
     const parsed = JSON.parse(raw);
+    if (parsed === null || parsed === undefined) return fallback;
     if (parsed && typeof parsed === 'object') {
       // Defend against __proto__ pollution
-      delete (parsed as any).__proto__;
-      delete (parsed as any).constructor;
-      delete (parsed as any).prototype;
+      try {
+        delete (parsed as any).__proto__;
+        delete (parsed as any).constructor;
+        delete (parsed as any).prototype;
+      } catch {}
     }
     return parsed;
   } catch {

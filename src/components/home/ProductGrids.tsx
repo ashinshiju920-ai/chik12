@@ -2,6 +2,30 @@ import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { ProductCard } from '../shop/ProductCard';
 import { ArrowRight, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const gridContainerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04,
+      delayChildren: 0.02
+    }
+  }
+};
+
+const gridItemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.45,
+      ease: [0.16, 1, 0.3, 1]
+    }
+  }
+};
 
 export const ProductGrids: React.FC = () => {
   const { products, setActivePage, setSelectedCategory } = useStore();
@@ -16,6 +40,13 @@ export const ProductGrids: React.FC = () => {
     activeTab === 'featured' ? featuredItems :
     activeTab === 'eyewear' ? trendingEyewear :
     products.slice(0, 8);
+
+  const tabs: { id: 'all' | 'new' | 'featured' | 'eyewear'; label: string }[] = [
+    { id: 'all', label: 'All Products' },
+    { id: 'new', label: 'New Arrivals' },
+    { id: 'featured', label: 'Featured Items' },
+    { id: 'eyewear', label: 'Trending Eyewear' },
+  ];
 
   const handleViewAll = () => {
     if (activeTab === 'eyewear') {
@@ -33,65 +64,56 @@ export const ProductGrids: React.FC = () => {
       {/* Section Heading & Tabs */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-[#EAE6DE] pb-6">
         <div>
-          <h2 className="text-3xl font-semibold text-[#1F1F1F] font-editorial tracking-tight text-center md:text-left">
+          <h2 className="text-3xl font-serif font-medium text-[#1F1F1F] dark:text-white tracking-tight text-center md:text-left">
             Curated Collections
           </h2>
-          <p className="text-xs text-[#827A6D] mt-1 text-center md:text-left">
+          <p className="font-sans text-xs text-[#827A6D] dark:text-neutral-400 mt-1 text-center md:text-left">
             Minimalist Nordic apparel, optics, and handcrafted accessories.
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-2 bg-[#EFECE6] p-1 rounded-xs text-xs font-medium">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`px-3.5 py-1.5 rounded-xs transition-all cursor-pointer ${
-              activeTab === 'all'
-                ? 'bg-white text-[#1F1F1F] font-semibold shadow-xs'
-                : 'text-[#696256] hover:text-[#1F1F1F]'
-            }`}
-          >
-            All Products
-          </button>
-          <button
-            onClick={() => setActiveTab('new')}
-            className={`px-3.5 py-1.5 rounded-xs transition-all cursor-pointer ${
-              activeTab === 'new'
-                ? 'bg-white text-[#1F1F1F] font-semibold shadow-xs'
-                : 'text-[#696256] hover:text-[#1F1F1F]'
-            }`}
-          >
-            New Arrivals
-          </button>
-          <button
-            onClick={() => setActiveTab('featured')}
-            className={`px-3.5 py-1.5 rounded-xs transition-all cursor-pointer ${
-              activeTab === 'featured'
-                ? 'bg-white text-[#1F1F1F] font-semibold shadow-xs'
-                : 'text-[#696256] hover:text-[#1F1F1F]'
-            }`}
-          >
-            Featured Items
-          </button>
-          <button
-            onClick={() => setActiveTab('eyewear')}
-            className={`px-3.5 py-1.5 rounded-xs transition-all cursor-pointer ${
-              activeTab === 'eyewear'
-                ? 'bg-white text-[#1F1F1F] font-semibold shadow-xs'
-                : 'text-[#696256] hover:text-[#1F1F1F]'
-            }`}
-          >
-            Trending Eyewear
-          </button>
+        {/* Tab Switcher with sliding layoutId indicator */}
+        <div className="flex items-center gap-1.5 bg-[#EFECE6] p-1 rounded-full text-xs font-medium relative">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-4 py-1.5 rounded-full transition-all cursor-pointer ${
+                  isActive
+                    ? 'text-[#1F1F1F] font-semibold'
+                    : 'text-[#696256] hover:text-[#1F1F1F]'
+                }`}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="homeProductTab"
+                    className="absolute inset-0 rounded-full bg-white shadow-xs"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* 4-Column Product Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* 4-Column Product Grid with Framer Motion Stagger */}
+      <motion.div
+        key={activeTab}
+        variants={gridContainerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+      >
         {displayedProducts.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          <motion.div key={product.id} variants={gridItemVariants}>
+            <ProductCard product={product} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
 
       {/* View All Button */}
       <div className="mt-12 text-center">

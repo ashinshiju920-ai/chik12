@@ -574,10 +574,10 @@ export const INITIAL_COUPONS = [
   {
     code: 'DIVA10',
     discountPercent: 10,
-    description: '10% off your entire Diva\'Chik order'
+    description: '10% off your entire DivaChic order'
   },
   {
-    code: 'DIVACHIK20',
+    code: 'DIVACHIC20',
     discountPercent: 20,
     minSpend: 100,
     description: '20% off orders over $100'
@@ -599,6 +599,9 @@ export const INITIAL_ORDERS = [
     id: 'ord-88392',
     orderNumber: 'DIVA-2026-88392',
     date: 'August 28, 2026',
+    createdAt: '2026-08-28T10:24:00.000Z',
+    customerName: 'Ashin Shiju',
+    email: 'ashin.shiju@divachic.com',
     items: [
       {
         productId: 'prod-3',
