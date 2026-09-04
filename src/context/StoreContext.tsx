@@ -1107,7 +1107,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (cloudDelivery && typeof cloudDelivery.standardDeliveryDays === 'number') {
         setStandardDeliveryDaysState(cloudDelivery.standardDeliveryDays);
         if (typeof cloudDelivery.onlineDiscountPercent === 'number') {
-          setOnlineDiscountPercent(cloudDelivery.onlineDiscountPercent);
+          setOnlineDiscountPercentState(cloudDelivery.onlineDiscountPercent);
         }
       }
     });

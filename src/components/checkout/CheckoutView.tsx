@@ -1,32 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
-import {
-  ShieldCheck,
-  CreditCard,
-  Truck,
-  MapPin,
-  CheckCircle2,
-  Lock,
-  QrCode,
-  Smartphone,
-  Building2,
-  Banknote,
-  ArrowLeft,
-  ArrowRight,
-  Sparkles,
-  Download,
-  Printer,
-  Package,
-  Calendar,
-  Clock,
-  Phone,
-  Mail,
-  Share2,
-  MessageCircle
-} from 'lucide-react';
 import { DivaChikLogo } from '../common/DivaChikLogo';
 import { Address, Order } from '../../types';
-import { motion } from 'motion/react';
+import { db } from '../../firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { load } from '@cashfreepayments/cashfree-js';
+import { motion } from 'framer-motion';
+import {
+  ShieldCheck,
+  Truck,
+  Lock,
+  ArrowLeft,
+  CheckCircle2,
+  RefreshCw,
+  MessageCircle,
+  Printer,
+  Package,
+  Clock,
+  Check,
+  Sparkles,
+  MapPin,
+  AlertCircle
+} from 'lucide-react';
 
 export const CheckoutView: React.FC = () => {
   const {
@@ -38,23 +33,19 @@ export const CheckoutView: React.FC = () => {
     appliedCoupon,
     orderNote,
     currentUser,
-    isFreeShipping,
     formatPrice,
     placeOrder,
     currentOrder,
+    setCurrentOrder,
+    clearCart,
     standardDeliveryDays,
-    onlineDiscountPercent,
     calculateDeliveryDate,
     activePage,
     setActivePage,
     showToast
   } = useStore();
 
-  // If in confirmation view
   const isConfirmation = activePage === 'order-confirmation';
-
-  // Checkout Step: 1: Information -> 2: Shipping Method -> 3: Payment
-  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Customer Contact Info
   const [email, setEmail] = useState(currentUser?.email || '');
@@ -72,36 +63,12 @@ export const CheckoutView: React.FC = () => {
   const [pincode, setPincode] = useState(defaultAddr?.pincode || '');
   const [country, setCountry] = useState(defaultAddr?.country || 'India');
 
-  // Auto-Pincode Auto-Fill Helper
-  const [pincodeDetectedNotice, setPincodeDetectedNotice] = useState('');
+  // Payment Method Selection: 'ONLINE' (default) vs. 'COD'
+  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handlePincodeChange = (val: string) => {
-    setPincode(val);
-    const clean = val.replace(/\D/g, '');
-
-    // Indian Pincode Auto-Lookup (6 digits)
-    if (clean.length === 6) {
-      if (clean.startsWith('560')) { setCity('Bangalore'); setState('Karnataka'); setCountry('India'); setPincodeDetectedNotice('Bangalore, KA'); }
-      else if (clean.startsWith('400')) { setCity('Mumbai'); setState('Maharashtra'); setCountry('India'); setPincodeDetectedNotice('Mumbai, MH'); }
-      else if (clean.startsWith('110')) { setCity('New Delhi'); setState('Delhi'); setCountry('India'); setPincodeDetectedNotice('New Delhi, DL'); }
-      else if (clean.startsWith('600')) { setCity('Chennai'); setState('Tamil Nadu'); setCountry('India'); setPincodeDetectedNotice('Chennai, TN'); }
-      else if (clean.startsWith('700')) { setCity('Kolkata'); setState('West Bengal'); setCountry('India'); setPincodeDetectedNotice('Kolkata, WB'); }
-      else if (clean.startsWith('500')) { setCity('Hyderabad'); setState('Telangana'); setCountry('India'); setPincodeDetectedNotice('Hyderabad, TS'); }
-      else if (clean.startsWith('380')) { setCity('Ahmedabad'); setState('Gujarat'); setCountry('India'); setPincodeDetectedNotice('Ahmedabad, GJ'); }
-      else if (clean.startsWith('411')) { setCity('Pune'); setState('Maharashtra'); setCountry('India'); setPincodeDetectedNotice('Pune, MH'); }
-      else if (clean.startsWith('682')) { setCity('Kochi'); setState('Kerala'); setCountry('India'); setPincodeDetectedNotice('Kochi, KL'); }
-      else { setCountry('India'); setPincodeDetectedNotice('India Postal Region'); }
-      showToast('Pincode Verified', 'success', 'City, State, and Country auto-filled!');
-    }
-    // US Zip Code Auto-Lookup (5 digits)
-    else if (clean.length === 5) {
-      if (clean.startsWith('94')) { setCity('San Francisco'); setState('California'); setCountry('United States'); setPincodeDetectedNotice('San Francisco, CA'); }
-      else if (clean.startsWith('10')) { setCity('New York'); setState('New York'); setCountry('United States'); setPincodeDetectedNotice('New York, NY'); }
-      else if (clean.startsWith('90')) { setCity('Los Angeles'); setState('California'); setCountry('United States'); setPincodeDetectedNotice('Los Angeles, CA'); }
-      else { setCountry('United States'); setPincodeDetectedNotice('US Zip Code'); }
-    }
-  };
-
+  // 1-Tap Express Presets
   const applyExpressPreset = (cityPreset: 'bangalore' | 'mumbai' | 'delhi') => {
     if (cityPreset === 'bangalore') {
       if (!fullName) setFullName('Valued Customer');
@@ -114,7 +81,7 @@ export const CheckoutView: React.FC = () => {
       setCountry('India');
     } else if (cityPreset === 'mumbai') {
       if (!fullName) setFullName('Valued Customer');
-      if (!email) setEmail('customer@divachik.com');
+      if (!email) setEmail('customer@divachic.online');
       if (!phone) setPhone('+91 9820098200');
       setStreet('Bandra-Kurla Complex, Block G');
       setCity('Mumbai');
@@ -123,7 +90,7 @@ export const CheckoutView: React.FC = () => {
       setCountry('India');
     } else if (cityPreset === 'delhi') {
       if (!fullName) setFullName('Valued Customer');
-      if (!email) setEmail('customer@divachik.com');
+      if (!email) setEmail('customer@divachic.online');
       if (!phone) setPhone('+91 9811098110');
       setStreet('Connaught Place, Block C');
       setCity('New Delhi');
@@ -131,81 +98,24 @@ export const CheckoutView: React.FC = () => {
       setPincode('110001');
       setCountry('India');
     }
-    showToast('Express Address Loaded', 'success', 'Form filled in 1 tap for fast checkout!');
+    showToast('Express Address Loaded', 'success', 'Form auto-filled for rapid checkout.');
   };
 
-  // Form completion progress percentage
-  const isEmailValid = Boolean(email && email.includes('@'));
-  const isPhoneValid = Boolean(phone && phone.length >= 7);
-  const isNameValid = Boolean(fullName.trim().length > 0);
-  const isStreetValid = Boolean(street.trim().length > 0);
-  const isCityValid = Boolean(city.trim().length > 0);
-  const isStateValid = Boolean(state.trim().length > 0);
-  const isPincodeValid = Boolean(pincode.trim().length >= 4);
-
-  const filledCount = [isEmailValid, isPhoneValid, isNameValid, isStreetValid, isCityValid, isStateValid, isPincodeValid].filter(Boolean).length;
-  const formProgressPercent = Math.round((filledCount / 7) * 100);
-
-  // Shipping Method
-  const [shippingMethod, setShippingMethod] = useState<'standard' | 'express'>('standard');
-  const shippingFee = isFreeShipping ? 0 : shippingMethod === 'express' ? 15.00 : 5.00;
-
-  // Multi-mode Payment options
-  const [paymentMode, setPaymentMode] = useState<'card' | 'upi' | 'netbanking' | 'applepay' | 'bnpl' | 'cod'>('card');
-
-  // Card details
-  const [cardNumber, setCardNumber] = useState('4532 •••• •••• 8829');
-  const [cardHolder, setCardHolder] = useState(fullName || 'ASHIN SHIJU');
-  const [cardExpiry, setCardExpiry] = useState('08/29');
-  const [cardCvv, setCardCvv] = useState('782');
-
-  // UPI details
-  const [upiId, setUpiId] = useState('user@okaxis');
-
-  // Netbanking bank
-  const [selectedBank, setSelectedBank] = useState('Chase Bank');
-
-  // COD OTP simulation
-  const [codOtp, setCodOtp] = useState('');
-  const [codOtpSent, setCodOtpSent] = useState(false);
-
-  const isOnlinePayment = paymentMode !== 'cod';
-  const onlineDiscountAmount = isOnlinePayment ? (cartSubtotal * (onlineDiscountPercent / 100)) : 0;
-  const finalTax = cartSubtotal * 0.08;
-  const finalGrandTotal = Math.max(0, cartTotal + shippingFee + finalTax - onlineDiscountAmount);
-
-  const GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyjk8MYflKlMaqFM8ZQzwl673roAingHJSsclhshnBd709DqUmMArW3TGx1pId93hU/exec";
-
-  const syncFormToGoogleSheetsExcel = () => {
-    const formData = {
-      email: email,
-      phone: phone,
-      name: fullName,
-      postalCode: pincode,
-      streetAddress: street,
-      aptSuite: apartment,
-      city: city,
-      state: state,
-      country: country
-    };
-
-    try {
-      fetch(GOOGLE_SHEETS_WEB_APP_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData)
-      })
-        .then(() => {
-          console.log("Customer address synced to Google Sheets Excel successfully!");
-        })
-        .catch(error => {
-          console.error("Error submitting form to Google Sheets:", error);
-        });
-    } catch (err) {
-      console.log("Google Sheets submission exception:", err);
+  // Indian Pincode Auto-Lookup (6 digits)
+  const handlePincodeChange = (val: string) => {
+    setPincode(val);
+    const clean = val.replace(/\D/g, '');
+    if (clean.length === 6) {
+      if (clean.startsWith('560')) { setCity('Bangalore'); setState('Karnataka'); setCountry('India'); }
+      else if (clean.startsWith('400')) { setCity('Mumbai'); setState('Maharashtra'); setCountry('India'); }
+      else if (clean.startsWith('110')) { setCity('New Delhi'); setState('Delhi'); setCountry('India'); }
+      else if (clean.startsWith('600')) { setCity('Chennai'); setState('Tamil Nadu'); setCountry('India'); }
+      else if (clean.startsWith('700')) { setCity('Kolkata'); setState('West Bengal'); setCountry('India'); }
+      else if (clean.startsWith('500')) { setCity('Hyderabad'); setState('Telangana'); setCountry('India'); }
+      else if (clean.startsWith('380')) { setCity('Ahmedabad'); setState('Gujarat'); setCountry('India'); }
+      else if (clean.startsWith('411')) { setCity('Pune'); setState('Maharashtra'); setCountry('India'); }
+      else if (clean.startsWith('682')) { setCity('Kochi'); setState('Kerala'); setCountry('India'); }
+      else { setCountry('India'); }
     }
   };
 
@@ -221,960 +131,1022 @@ export const CheckoutView: React.FC = () => {
     setCountry(addr.country);
   };
 
-  const handleSendCodOtp = () => {
-    setCodOtpSent(true);
-    showToast('OTP sent to ' + (phone || 'your phone number'), 'info', 'Use OTP code: 884422');
+  // Google Sheets integration backup
+  const GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyjk8MYflKlMaqFM8ZQzwl673roAingHJSsclhshnBd709DqUmMArW3TGx1pId93hU/exec";
+  const syncFormToGoogleSheetsExcel = () => {
+    try {
+      fetch(GOOGLE_SHEETS_WEB_APP_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          phone,
+          name: fullName,
+          postalCode: pincode,
+          streetAddress: street,
+          aptSuite: apartment,
+          city,
+          state,
+          country
+        })
+      }).catch((e) => console.log('Google Sheets sync skipped:', e));
+    } catch {}
   };
 
-  const handleCompleteOrder = () => {
-    if (paymentMode === 'cod' && codOtp !== '884422' && codOtp !== '123456') {
-      showToast('Please enter the valid 6-digit COD verification OTP (use 884422)', 'warning');
-      return;
-    }
-
-    const shippingAddress: Address = {
-      id: `addr-${Date.now()}`,
-      fullName,
-      phone,
-      street,
-      apartment,
-      city,
-      state,
-      pincode,
-      country,
-      type: 'home'
-    };
-
-    const paymentLabel =
-      paymentMode === 'card' ? `Credit Card (${cardNumber.slice(-4)})` :
-        paymentMode === 'upi' ? `UPI (${upiId})` :
-          paymentMode === 'netbanking' ? `Net Banking (${selectedBank})` :
-            paymentMode === 'applepay' ? 'Apple Pay / One-Touch' :
-              paymentMode === 'bnpl' ? 'Klarna (4 interest-free installments)' :
-                'Cash on Delivery (COD)';
-
-    placeOrder({
-      customer: {
-        fullName: fullName || 'Valued Customer',
-        email: email || currentUser?.email || 'customer@gmail.com',
-        phone: phone || '+1 (555) 000-0000',
-        addressLine1: street,
-        addressLine2: apartment,
-        city,
-        state,
-        postalCode: pincode
-      },
-      customerName: fullName || 'Valued Customer',
-      email: email || currentUser?.email || 'customer@gmail.com',
-      shippingAddress,
-      shippingFee,
-      tax: finalTax,
-      total: finalGrandTotal,
-      totalAmount: finalGrandTotal,
-      paymentMethod: paymentLabel
-    });
-  };
+  // Calculation Logic
+  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const COD_SHIPPING_FEE = 150;
+  const shippingFee = paymentMethod === 'ONLINE' ? 0 : COD_SHIPPING_FEE;
+  const discountAmount = cartDiscount || 0;
+  const finalPayable = Math.max(0, subtotal + shippingFee - discountAmount);
 
   // Auto-redirect to WhatsApp upon order confirmation
   useEffect(() => {
     if (isConfirmation && currentOrder) {
       const waUrl = `https://wa.me/message/XAACO6O6PPIDL1?text=${encodeURIComponent(
-        `Hello DivaChic Studio, I just placed Order #${currentOrder.orderNumber} for total ${formatPrice(currentOrder.total)}. Please confirm my order dispatch!`
+        `Hello DivaChic Studio, I just placed Order #${currentOrder.orderNumber || currentOrder.orderId} for total ₹${(currentOrder.total || currentOrder.totalAmount || 0).toLocaleString('en-IN')}. Please confirm my order dispatch!`
       )}`;
 
       const timer = setTimeout(() => {
         window.location.href = waUrl;
-      }, 2000);
+      }, 2500);
 
       return () => clearTimeout(timer);
     }
   }, [isConfirmation, currentOrder]);
 
-  // ORDER CONFIRMATION SCREEN
+  // Validation
+  const validateForm = (): boolean => {
+    setErrorMessage('');
+    if (!fullName.trim()) {
+      setErrorMessage('Please enter your full name.');
+      return false;
+    }
+    if (!phone.trim() || phone.replace(/\D/g, '').length < 10) {
+      setErrorMessage('Please enter a valid 10-digit mobile phone number.');
+      return false;
+    }
+    if (!street.trim()) {
+      setErrorMessage('Please enter your delivery street address.');
+      return false;
+    }
+    if (!city.trim()) {
+      setErrorMessage('Please enter your delivery city.');
+      return false;
+    }
+    if (!state.trim()) {
+      setErrorMessage('Please enter your state.');
+      return false;
+    }
+    if (!pincode.trim() || pincode.replace(/\D/g, '').length < 5) {
+      setErrorMessage('Please enter a valid PIN / Postal code.');
+      return false;
+    }
+    return true;
+  };
+
+  // 1. CASH ON DELIVERY ORDER HANDLER
+  const handleConfirmCodOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    if (cart.length === 0) {
+      showToast('Your shopping bag is empty', 'warning');
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage('');
+
+    try {
+      const orderId = `COD_${Date.now()}`;
+      const customerDetails = {
+        fullName: fullName.trim(),
+        email: (email || currentUser?.email || 'customer@divachic.online').trim(),
+        phone: phone.trim(),
+        addressLine1: street.trim(),
+        addressLine2: apartment.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        postalCode: pincode.trim(),
+        country: country.trim() || 'India'
+      };
+
+      const cartItems = cart.map((item) => ({
+        productId: item.productId,
+        name: item.product.name,
+        title: item.product.name,
+        price: Number(item.price),
+        quantity: Number(item.quantity),
+        image: item.product.images[0] || '',
+        imageUrl: item.product.images[0] || '',
+        selectedColor: item.selectedColor || null,
+        selectedSize: item.selectedSize || null
+      }));
+
+      const codOrderDoc = {
+        orderId,
+        orderNumber: orderId,
+        id: orderId,
+        customer: customerDetails,
+        customerName: customerDetails.fullName,
+        email: customerDetails.email,
+        items: cartItems,
+        subtotal,
+        shippingFee: COD_SHIPPING_FEE,
+        totalAmount: finalPayable,
+        total: finalPayable,
+        paymentMethod: 'COD',
+        paymentStatus: 'Pending',
+        orderStatus: 'Placed',
+        status: 'Placed',
+        createdAt: serverTimestamp(),
+        dispatchDate: null,
+        trackingNumber: `TRK-${Date.now().toString().slice(-8)}-IN`,
+        carrier: 'Blue Dart / Delhivery Express',
+        estimatedDeliveryDate: calculateDeliveryDate(0).formattedDate,
+        shippingAddress: {
+          id: `addr-${Date.now()}`,
+          fullName: customerDetails.fullName,
+          phone: customerDetails.phone,
+          street: customerDetails.addressLine1,
+          apartment: customerDetails.addressLine2,
+          city: customerDetails.city,
+          state: customerDetails.state,
+          pincode: customerDetails.postalCode,
+          country: customerDetails.country,
+          type: 'home' as const
+        },
+        timeline: [
+          {
+            title: 'Order Placed (Cash on Delivery)',
+            description: 'Cash on Delivery order confirmed. Dispatched via premium insured courier.',
+            timestamp: 'Just Now',
+            location: 'DivaChic Studio',
+            completed: true,
+            current: true
+          }
+        ]
+      };
+
+      // Write directly to Cloud Firestore 'orders' collection
+      await setDoc(doc(db, 'orders', orderId), codOrderDoc, { merge: true });
+
+      // Synchronize in StoreContext state
+      placeOrder({
+        id: orderId,
+        orderNumber: orderId,
+        orderId,
+        total: finalPayable,
+        totalAmount: finalPayable,
+        subtotal,
+        shippingFee: COD_SHIPPING_FEE,
+        paymentMethod: 'Cash on Delivery (COD)',
+        paymentStatus: 'cod' as any,
+        status: 'Placed' as any,
+        customer: customerDetails,
+        customerName: customerDetails.fullName,
+        email: customerDetails.email,
+        shippingAddress: codOrderDoc.shippingAddress
+      });
+
+      setCurrentOrder(codOrderDoc as any);
+      clearCart();
+      syncFormToGoogleSheetsExcel();
+
+      showToast('Order Placed Successfully', 'success', `Cash on Delivery Order #${orderId} has been confirmed.`);
+      setActivePage('order-confirmation');
+    } catch (err: any) {
+      console.error('Failed to write COD order:', err);
+      setErrorMessage(err?.message || 'Failed to place order. Please try again.');
+      showToast('Failed to place order', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // 2. PAY ONLINE (CASHFREE DROP CHECKOUT) HANDLER
+  const handleProceedToCashfreePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    if (cart.length === 0) {
+      showToast('Your shopping bag is empty', 'warning');
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage('');
+
+    try {
+      const orderId = `ORD_${Date.now()}`;
+      const cleanPhone = phone.replace(/\D/g, '').slice(-10) || '9999999999';
+
+      const customerDetails = {
+        fullName: fullName.trim(),
+        email: (email || currentUser?.email || 'customer@divachic.online').trim(),
+        phone: cleanPhone,
+        addressLine1: street.trim(),
+        addressLine2: apartment.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        postalCode: pincode.trim(),
+        country: country.trim() || 'India'
+      };
+
+      const cartItems = cart.map((item) => ({
+        productId: item.productId,
+        name: item.product.name,
+        title: item.product.name,
+        price: Number(item.price),
+        quantity: Number(item.quantity),
+        image: item.product.images[0] || '',
+        imageUrl: item.product.images[0] || '',
+        selectedColor: item.selectedColor || null,
+        selectedSize: item.selectedSize || null
+      }));
+
+      // Step 1: Request Cashfree payment session from /api/create-cashfree-order
+      const response = await fetch('/api/create-cashfree-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          orderId,
+          orderAmount: finalPayable,
+          customerName: customerDetails.fullName,
+          customerEmail: customerDetails.email,
+          customerPhone: cleanPhone
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.paymentSessionId) {
+        throw new Error(data.error || 'Could not initialize Cashfree secure payment session');
+      }
+
+      // Step 2: Open Cashfree Drop Checkout Modal
+      const cashfree = await load({ mode: 'production' });
+
+      cashfree.checkout({
+        paymentSessionId: data.paymentSessionId,
+        redirectTarget: '_modal'
+      }).then(async (result: any) => {
+        if (result?.error) {
+          console.warn('Cashfree modal closed / cancelled:', result.error);
+          showToast('Payment window closed', 'info', 'You can retry or select Cash on Delivery.');
+          setIsProcessing(false);
+          return;
+        }
+
+        // Step 3: On payment success, save order document to Firestore 'orders' collection
+        await saveSuccessfulOnlineOrder(orderId, customerDetails, cartItems);
+      }).catch(async (checkoutErr: any) => {
+        console.warn('Cashfree checkout modal callback:', checkoutErr);
+        // If modal was dismissed or had transient issue
+        setIsProcessing(false);
+      });
+
+    } catch (err: any) {
+      console.error('Cashfree initialization error:', err);
+      setErrorMessage(err?.message || 'Unable to connect to Cashfree payment gateway. Please try again or choose COD.');
+      showToast('Payment Gateway Notice', 'error', err?.message);
+      setIsProcessing(false);
+    }
+  };
+
+  // Helper: Persist verified online paid order to Firestore
+  const saveSuccessfulOnlineOrder = async (orderId: string, customerDetails: any, cartItems: any[]) => {
+    try {
+      const onlineOrderDoc = {
+        orderId,
+        orderNumber: orderId,
+        id: orderId,
+        customer: customerDetails,
+        customerName: customerDetails.fullName,
+        email: customerDetails.email,
+        items: cartItems,
+        subtotal,
+        shippingFee: 0,
+        totalAmount: finalPayable,
+        total: finalPayable,
+        paymentMethod: 'Cashfree',
+        paymentStatus: 'Paid',
+        orderStatus: 'Placed',
+        status: 'Placed',
+        createdAt: serverTimestamp(),
+        dispatchDate: null,
+        trackingNumber: `TRK-${Date.now().toString().slice(-8)}-IN`,
+        carrier: 'Blue Dart / Delhivery Express',
+        estimatedDeliveryDate: calculateDeliveryDate(0).formattedDate,
+        shippingAddress: {
+          id: `addr-${Date.now()}`,
+          fullName: customerDetails.fullName,
+          phone: customerDetails.phone,
+          street: customerDetails.addressLine1,
+          apartment: customerDetails.addressLine2,
+          city: customerDetails.city,
+          state: customerDetails.state,
+          pincode: customerDetails.postalCode,
+          country: customerDetails.country,
+          type: 'home' as const
+        },
+        timeline: [
+          {
+            title: 'Payment Confirmed & Verified (Cashfree)',
+            description: 'Instant prepaid verification successful. Order queued for expedited atelier packing.',
+            timestamp: 'Just Now',
+            location: 'Cashfree Payments',
+            completed: true,
+            current: true
+          }
+        ]
+      };
+
+      await setDoc(doc(db, 'orders', orderId), onlineOrderDoc, { merge: true });
+
+      placeOrder({
+        id: orderId,
+        orderNumber: orderId,
+        orderId,
+        total: finalPayable,
+        totalAmount: finalPayable,
+        subtotal,
+        shippingFee: 0,
+        paymentMethod: 'Cashfree (Prepaid)',
+        paymentStatus: 'paid' as any,
+        status: 'Placed' as any,
+        customer: customerDetails,
+        customerName: customerDetails.fullName,
+        email: customerDetails.email,
+        shippingAddress: onlineOrderDoc.shippingAddress
+      });
+
+      setCurrentOrder(onlineOrderDoc as any);
+      clearCart();
+      syncFormToGoogleSheetsExcel();
+
+      showToast('Payment Verified', 'success', `Order #${orderId} successfully completed!`);
+      setActivePage('order-confirmation');
+    } catch (err: any) {
+      console.error('Failed to save online order to Firestore:', err);
+      clearCart();
+      setActivePage('order-confirmation');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // =========================================================================
+  // ORDER CONFIRMATION VIEW
+  // =========================================================================
   if (isConfirmation && currentOrder) {
     const whatsappLink = `https://wa.me/message/XAACO6O6PPIDL1?text=${encodeURIComponent(
-      `Hello DivaChic Studio, I just placed Order #${currentOrder.orderNumber} for total ${formatPrice(currentOrder.total)}. Please confirm my order dispatch!`
+      `Hello DivaChic Studio, I just placed Order #${currentOrder.orderNumber || currentOrder.orderId} for total ₹${(currentOrder.total || currentOrder.totalAmount || 0).toLocaleString('en-IN')}. Please confirm my order dispatch!`
     )}`;
 
     return (
-      <div className="bg-[#F9F8F6] min-h-screen py-12 sm:py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-
+      <div className="bg-[#FAF9F6] min-h-screen py-12 sm:py-16">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white border border-[#EAE6DE] rounded-xs shadow-md p-6 sm:p-10 space-y-8"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="bg-white border border-neutral-200 shadow-sm p-6 sm:p-10 space-y-8"
           >
-            {/* WhatsApp Auto-Redirect High-Priority Banner */}
-            <div className="bg-[#EBF5EF] border-2 border-[#25D366]/60 p-5 rounded-xs space-y-3 shadow-xs">
+            {/* WhatsApp Direct Dispatch Notice */}
+            <div className="bg-[#EBF5EF] border border-[#25D366]/40 p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-[#128C7E] font-bold text-sm">
                   <MessageCircle className="w-5 h-5 fill-[#25D366] text-white shrink-0" />
-                  <span>WhatsApp Concierge Order Sync</span>
+                  <span className="font-serif tracking-wide">WhatsApp Studio Order Sync</span>
                 </div>
-                <span className="bg-[#25D366] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
-                  Redirecting to WhatsApp...
+                <span className="bg-[#25D366] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest animate-pulse">
+                  Redirecting...
                 </span>
               </div>
-
               <p className="text-xs text-[#1E5638] leading-relaxed">
-                Order <strong>#{currentOrder.orderNumber}</strong> has been successfully placed! You are being automatically redirected to WhatsApp for direct studio concierge dispatch confirmation.
+                Order <strong>#{currentOrder.orderNumber || currentOrder.orderId}</strong> has been logged! You are being redirected to our WhatsApp studio concierge for personal dispatch tracking.
               </p>
-
               <a
                 href={whatsappLink}
-                className="w-full bg-[#25D366] hover:bg-[#128C7E] active:bg-[#075E54] text-white text-xs font-bold py-3.5 px-4 rounded-xs uppercase tracking-wider transition-all duration-200 inline-flex items-center justify-center gap-2.5 shadow-md cursor-pointer"
+                className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-bold py-3 px-4 uppercase tracking-widest transition-all inline-flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               >
-                <MessageCircle className="w-4.5 h-4.5 fill-white text-white" />
-                <span>Redirecting to WhatsApp Now (Click to Open Immediately)</span>
+                <MessageCircle className="w-4 h-4 fill-white text-white" />
+                <span>Open WhatsApp Concierge Immediately</span>
               </a>
             </div>
 
-            {/* Success Header */}
-            <div className="text-center space-y-3 border-b border-[#F0ECE1] pb-8">
-              <div className="flex justify-center mb-2">
-                <DivaChikLogo variant="full" size="md" theme="dark" showSubtitle={true} subtitleText="EXCLUSIVE CLIENT RECEIPT" />
+            {/* Receipt Header */}
+            <div className="text-center space-y-3 border-b border-neutral-200 pb-8">
+              <div className="flex justify-center mb-1">
+                <DivaChikLogo variant="full" size="md" theme="dark" showSubtitle={true} subtitleText="AUTHENTIC ATELIER INVOICE" />
               </div>
-              <div className="w-16 h-16 bg-[#EBF5EF] text-[#1E5638] rounded-full flex items-center justify-center mx-auto shadow-xs">
-                <CheckCircle2 className="w-9 h-9 stroke-[2]" />
+              <div className="w-14 h-14 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-8 h-8 stroke-[1.75]" />
               </div>
-              <span className="text-xs font-semibold uppercase tracking-widest text-[#C85A32]">
-                Order Confirmed
+              <span className="text-[10px] font-serif tracking-widest uppercase text-neutral-400 block">
+                Official Order Receipt
               </span>
-              <h1 className="text-3xl sm:text-4xl font-semibold text-[#1F1F1F] font-editorial">
-                Thank You For Your Order!
+              <h1 className="text-3xl font-serif text-neutral-900 font-semibold tracking-tight">
+                Thank You For Your Acquisition
               </h1>
-              <p className="text-xs sm:text-sm text-[#7A7264] max-w-md mx-auto leading-relaxed">
-                We have received your order <strong>#{currentOrder.orderNumber}</strong>. A confirmation and invoice has been dispatched to <strong>{currentUser?.email || email || 'your email'}</strong>.
+              <p className="text-xs sm:text-sm text-neutral-500 max-w-md mx-auto leading-relaxed font-serif">
+                We have registered Order <strong>#{currentOrder.orderNumber || currentOrder.orderId}</strong>. Payment Method: <strong className="text-neutral-900">{currentOrder.paymentMethod}</strong>.
               </p>
             </div>
 
-            {/* Tracking & Logistics Badge */}
-            <div className="bg-[#FAF9F6] border border-[#EAE6DE] p-5 rounded-xs grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            {/* Logistics Badge */}
+            <div className="bg-[#fafafa] border border-neutral-200 p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-serif">
               <div>
-                <span className="text-[#8C8477] uppercase text-[10px] tracking-wider block">Tracking Number</span>
-                <strong className="text-[#1F1F1F] font-mono text-sm">{currentOrder.trackingNumber}</strong>
+                <span className="text-neutral-400 uppercase text-[10px] tracking-widest block">Reference ID</span>
+                <strong className="text-neutral-900 font-mono text-xs">{currentOrder.orderNumber || currentOrder.orderId}</strong>
               </div>
               <div>
-                <span className="text-[#8C8477] uppercase text-[10px] tracking-wider block">Carrier</span>
-                <span className="text-[#1F1F1F] font-semibold">{currentOrder.carrier}</span>
+                <span className="text-neutral-400 uppercase text-[10px] tracking-widest block">Payment Status</span>
+                <span className="text-emerald-700 font-semibold uppercase tracking-wider text-xs">
+                  {currentOrder.paymentStatus || 'Confirmed'}
+                </span>
               </div>
               <div>
-                <span className="text-[#8C8477] uppercase text-[10px] tracking-wider block">Estimated Delivery</span>
-                <strong className="text-[#1E5638] font-semibold">{currentOrder.estimatedDeliveryDate}</strong>
+                <span className="text-neutral-400 uppercase text-[10px] tracking-widest block">Estimated Arrival</span>
+                <strong className="text-neutral-900">{currentOrder.estimatedDeliveryDate || calculateDeliveryDate(0).formattedDate}</strong>
               </div>
             </div>
 
-            {/* Live Progress Timeline */}
-            <div className="space-y-4 pt-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#1F1F1F]">
-                Fulfillment & Courier Timeline
+            {/* Purchased Items List */}
+            <div className="space-y-3 border-t border-neutral-200 pt-6">
+              <h3 className="text-xs font-serif font-bold uppercase tracking-widest text-neutral-900">
+                Acquired Pieces ({currentOrder.items?.length || 0})
               </h3>
-              <div className="space-y-3">
-                {currentOrder.timeline.map((event, idx) => (
-                  <div key={idx} className="flex items-start gap-3 text-xs">
-                    <div className="mt-0.5">
-                      {event.completed ? (
-                        <div className="w-5 h-5 rounded-full bg-[#1E5638] text-white flex items-center justify-center">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                        </div>
-                      ) : (
-                        <div className="w-5 h-5 rounded-full border-2 border-[#D5D0C5] bg-white flex items-center justify-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#D5D0C5]"></span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className={`font-semibold ${event.current ? 'text-[#C85A32]' : 'text-[#1F1F1F]'}`}>
-                          {event.title}
-                        </span>
-                        <span className="text-[11px] text-[#9E978C]">{event.timestamp}</span>
-                      </div>
-                      <p className="text-[11px] text-[#6E685F] mt-0.5">{event.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Ordered Items List */}
-            <div className="border-t border-[#F0ECE1] pt-6 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#1F1F1F]">
-                Purchased Items ({currentOrder.items.length})
-              </h3>
-              <div className="divide-y divide-[#F0ECE1]">
-                {currentOrder.items.map((item, idx) => (
+              <div className="divide-y divide-neutral-100">
+                {currentOrder.items?.map((item: any, idx: number) => (
                   <div key={idx} className="py-3 flex items-center justify-between gap-4 text-xs">
                     <div className="flex items-center gap-3">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-12 h-12 object-cover rounded-xs border border-[#EAE6DE]"
-                      />
+                      <div className="w-12 aspect-[3/4] bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
+                        <img src={item.imageUrl || item.image} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
                       <div>
-                        <div className="font-semibold text-[#1F1F1F]">{item.name}</div>
-                        <div className="text-[11px] text-[#8C8477]">
-                          Qty: {item.quantity} {item.selectedColor ? `| ${item.selectedColor}` : ''}
+                        <div className="font-serif font-medium text-neutral-900">{item.name}</div>
+                        <div className="text-[10px] text-neutral-400 mt-0.5">
+                          Qty: {item.quantity} {item.selectedColor ? `• ${item.selectedColor}` : ''} {item.selectedSize ? `• ${item.selectedSize}` : ''}
                         </div>
                       </div>
                     </div>
-                    <div className="font-semibold text-[#1F1F1F]">
-                      {formatPrice(item.price * item.quantity)}
+                    <div className="font-serif font-medium text-neutral-900">
+                      ₹{(item.price * item.quantity).toLocaleString('en-IN')}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Payment & Shipping Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-[#F0ECE1] text-xs">
-              <div>
-                <span className="text-[#8C8477] uppercase text-[10px] tracking-wider block mb-1">Shipping Destination</span>
-                <div className="text-[#1F1F1F] leading-relaxed">
-                  <p className="font-semibold">{currentOrder.shippingAddress.fullName}</p>
-                  <p>{currentOrder.shippingAddress.street} {currentOrder.shippingAddress.apartment}</p>
-                  <p>{currentOrder.shippingAddress.city}, {currentOrder.shippingAddress.state} {currentOrder.shippingAddress.pincode}</p>
-                  <p>{currentOrder.shippingAddress.country}</p>
-                  <p className="text-[#8C8477] mt-1">{currentOrder.shippingAddress.phone}</p>
-                </div>
+            {/* Price Breakdown */}
+            <div className="p-4 bg-[#fafafa] border border-neutral-200 space-y-2 text-xs font-serif">
+              <div className="flex justify-between text-neutral-500">
+                <span>Subtotal</span>
+                <span>₹{(currentOrder.subtotal || 0).toLocaleString('en-IN')}</span>
               </div>
-
-              <div>
-                <span className="text-[#8C8477] uppercase text-[10px] tracking-wider block mb-1">Payment Method & Total</span>
-                <div className="space-y-1 text-[#555048]">
-                  <p><strong>Method:</strong> {currentOrder.paymentMethod}</p>
-                  <p><strong>Subtotal:</strong> {formatPrice(currentOrder.subtotal)}</p>
-                  <p><strong>Shipping:</strong> {currentOrder.shippingFee === 0 ? 'FREE' : formatPrice(currentOrder.shippingFee)}</p>
-                  <p><strong>Tax:</strong> {formatPrice(currentOrder.tax)}</p>
-                  <p className="text-sm font-bold text-[#1F1F1F] pt-1">
-                    Total Paid: {formatPrice(currentOrder.total)}
-                  </p>
-                </div>
+              <div className="flex justify-between text-neutral-500">
+                <span>Shipping Fee</span>
+                <span>{currentOrder.shippingFee === 0 ? 'FREE (Complimentary Online)' : `₹${currentOrder.shippingFee}`}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-sm text-neutral-900 pt-2 border-t border-neutral-200">
+                <span>Final Payable</span>
+                <span className="font-serif text-base">₹{(currentOrder.totalAmount || currentOrder.total || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
 
-            {/* Actions: Download Invoice & Return */}
-            <div className="pt-6 border-t border-[#F0ECE1] flex flex-wrap items-center justify-between gap-4">
+            {/* Footer Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-neutral-200">
               <button
-                onClick={() => {
-                  window.print();
-                  showToast('Invoice prepared for printing', 'info');
-                }}
-                className="inline-flex items-center gap-2 border border-[#D5D0C5] hover:bg-[#F5F3EF] text-[#1F1F1F] text-xs font-semibold px-4 py-2.5 rounded-xs transition-colors cursor-pointer"
+                onClick={() => window.print()}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-neutral-300 hover:border-neutral-900 text-neutral-800 text-xs font-serif uppercase tracking-widest px-4 py-3 transition-colors cursor-pointer"
               >
-                <Printer className="w-4 h-4" />
+                <Printer className="w-3.5 h-3.5" />
                 <span>Print Tax Invoice</span>
               </button>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setActivePage('account')}
-                  className="bg-[#1F1F1F] hover:bg-[#333333] text-white text-xs font-semibold px-5 py-2.5 rounded-xs transition-colors cursor-pointer"
-                >
-                  Manage Orders in Dashboard
-                </button>
-                <button
-                  onClick={() => setActivePage('shop')}
-                  className="bg-[#C85A32] hover:bg-[#B34E2A] text-white text-xs font-semibold px-5 py-2.5 rounded-xs transition-colors cursor-pointer"
-                >
-                  Continue Shopping
-                </button>
-              </div>
+              <button
+                onClick={() => setActivePage('shop')}
+                className="w-full sm:w-auto bg-neutral-900 hover:bg-black text-white text-xs font-serif uppercase tracking-widest px-6 py-3 transition-colors cursor-pointer"
+              >
+                Continue Exploring Collections
+              </button>
             </div>
-
           </motion.div>
-
         </div>
       </div>
     );
   }
 
+  // =========================================================================
+  // EMPTY SHOPPING BAG SCREEN
+  // =========================================================================
+  if (cart.length === 0) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-[#FAF9F6] px-4 py-16">
+        <div className="max-w-md w-full text-center space-y-5 bg-white border border-neutral-200 p-8 sm:p-12 shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-neutral-100 text-neutral-400 flex items-center justify-center mx-auto">
+            <Package className="w-7 h-7 stroke-1" />
+          </div>
+          <span className="text-[10px] font-serif tracking-widest uppercase text-neutral-400 block">
+            Curated Bag Empty
+          </span>
+          <h2 className="text-2xl font-serif font-semibold text-neutral-900 tracking-tight">
+            Your Shopping Bag is Empty
+          </h2>
+          <p className="text-xs text-neutral-500 leading-relaxed font-serif">
+            Select items from our runway collections to proceed with an expedited bespoke checkout.
+          </p>
+          <button
+            onClick={() => setActivePage('shop')}
+            className="w-full bg-neutral-900 hover:bg-black text-white text-xs font-serif uppercase tracking-widest py-3.5 px-6 transition-all duration-300 cursor-pointer shadow-sm"
+          >
+            Explore Designer Catalog
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // MAIN LUXURY EDITORIAL CHECKOUT VIEW
+  // =========================================================================
   return (
-    <div className="bg-[#F9F8F6] min-h-screen pt-6 pb-32 sm:py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-[#FAF9F6] min-h-screen">
+      {/* Top Header Bar */}
+      <div className="border-b border-neutral-200 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-4 flex items-center justify-between">
+          <button
+            onClick={() => setActivePage('cart')}
+            className="inline-flex items-center gap-2 text-xs font-serif tracking-widest uppercase text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to Bag</span>
+          </button>
 
-        {/* Checkout Header */}
-        <div className="mb-8 flex items-center justify-between border-b border-[#EAE6DE] pb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setActivePage('cart')}
-              className="p-1 text-[#8C8477] hover:text-[#1F1F1F] transition-colors cursor-pointer"
-              aria-label="Back to cart"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-[#1F1F1F] font-editorial">
-              DivaChic Express Checkout
-            </h1>
+          <DivaChikLogo variant="compact" size="xs" theme="dark" />
+
+          <div className="flex items-center gap-1.5 text-[11px] font-serif tracking-widest text-emerald-800 uppercase">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+            <span className="hidden sm:inline">256-Bit SSL Encrypted Checkout</span>
           </div>
+        </div>
+      </div>
 
-          <div className="flex items-center gap-3">
-            <DivaChikLogo variant="compact" size="xs" theme="auto" />
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-[#1E5638] font-medium border-l border-[#EAE6DE] pl-3">
-              <Lock className="w-3.5 h-3.5" />
-              <span>256-Bit SSL Encrypted & PCI-DSS Compliant</span>
+      {/* Main Container: Two-Column Desktop Grid */}
+      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-10 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-12">
+
+        {/* LEFT COLUMN: Shipping & Payment Selection */}
+        <div className="space-y-10">
+
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+              <span>{errorMessage}</span>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Step Indicators (2-Step Direct Fast Checkout) */}
-        <div className="grid grid-cols-2 gap-3 mb-10 text-xs font-semibold">
-          <button
-            onClick={() => setStep(1)}
-            className={`py-3.5 px-4 border-b-2 text-center transition-all cursor-pointer ${step === 1 ? 'border-[#C85A32] text-[#C85A32] font-bold' : 'border-[#E0DDD5] text-[#8C8477]'
-              }`}
-          >
-            1. Shipping Address & Details
-          </button>
-          <button
-            onClick={() => fullName && street && city && setStep(2)}
-            className={`py-3.5 px-4 border-b-2 text-center transition-all cursor-pointer ${step === 2 ? 'border-[#C85A32] text-[#C85A32] font-bold' : 'border-[#E0DDD5] text-[#8C8477]'
-              }`}
-          >
-            2. Payment Gateway ({isOnlinePayment ? `${onlineDiscountPercent}% OFF` : 'COD'})
-          </button>
-        </div>
+          {/* STEP 01: SHIPPING DESTINATION */}
+          <div className="space-y-6">
+            <div>
+              <p className="font-serif tracking-widest text-xs uppercase text-neutral-400 mb-2">
+                Step 01 / Shipping Address & Recipient
+              </p>
+              <h2 className="text-xl sm:text-2xl font-serif text-neutral-900 font-semibold tracking-tight">
+                Client Destination
+              </h2>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            {/* 1-Tap Express Presets */}
+            <div className="space-y-2 pt-1">
+              <span className="text-[10px] font-serif tracking-widest uppercase text-neutral-400 block">
+                Quick Autofill Presets:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => applyExpressPreset('bangalore')}
+                  className="px-3 py-1.5 text-[11px] font-serif tracking-wider uppercase border border-neutral-300 hover:border-neutral-900 text-neutral-700 hover:text-neutral-900 bg-white transition-colors cursor-pointer"
+                >
+                  📍 Bangalore (560076)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyExpressPreset('mumbai')}
+                  className="px-3 py-1.5 text-[11px] font-serif tracking-wider uppercase border border-neutral-300 hover:border-neutral-900 text-neutral-700 hover:text-neutral-900 bg-white transition-colors cursor-pointer"
+                >
+                  📍 Mumbai (400051)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyExpressPreset('delhi')}
+                  className="px-3 py-1.5 text-[11px] font-serif tracking-wider uppercase border border-neutral-300 hover:border-neutral-900 text-neutral-700 hover:text-neutral-900 bg-white transition-colors cursor-pointer"
+                >
+                  📍 New Delhi (110001)
+                </button>
+              </div>
+            </div>
 
-          {/* Main Checkout Form Column */}
-          <div className="lg:col-span-8 space-y-8">
-
-            {/* STEP 1: SHIPPING ADDRESS */}
-            {step === 1 && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white p-6 sm:p-8 border border-[#EAE6DE] rounded-xs shadow-xs space-y-6"
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[#F0ECE1] pb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base font-semibold text-[#1F1F1F] font-sans">
-                        Customer Details & Shipping Destination
-                      </h2>
-                      <span className="text-[10px] bg-[#FAF1ED] text-[#C85A32] font-bold px-2 py-0.5 rounded-full border border-[#C85A32]/30">
-                        Fast Express Checkout
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#7A7264] mt-0.5">
-                      Type your 6-digit Pincode to auto-fill City & State instantly.
-                    </p>
-                  </div>
-
-                  <span className="text-xs font-mono font-bold text-[#C85A32]">Step 1 of 2</span>
-                </div>
-
-                {/* Form Completion Progress Meter */}
-                <div className="space-y-1 bg-[#FAF9F6] p-3 border border-[#EAE6DE] rounded-xs">
-                  <div className="flex justify-between items-center text-[11px] font-semibold">
-                    <span className="text-[#1F1F1F] flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#C85A32]" />
-                      <span>Form Completion Readiness:</span>
-                    </span>
-                    <span className={formProgressPercent === 100 ? 'text-[#1E5638] font-bold' : 'text-[#C85A32]'}>
-                      {formProgressPercent}% Ready {formProgressPercent === 100 ? '✓' : ''}
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-[#EAE6DE] rounded-full overflow-hidden">
+            {/* Saved Address Selector (if member has saved addresses) */}
+            {currentUser && currentUser.addresses.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-[10px] font-serif tracking-widest uppercase text-neutral-400 block">
+                  Select Saved Address:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {currentUser.addresses.map((addr) => (
                     <div
-                      className="h-full bg-gradient-to-r from-[#C85A32] to-[#1E5638] transition-all duration-500 rounded-full"
-                      style={{ width: `${formProgressPercent}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* 1-TAP EXPRESS AUTOFILL CHIPS */}
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between text-xs font-semibold text-[#4A453C]">
-                    <span>⚡ 1-Tap Express Address Presets (Fast Conversion):</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => applyExpressPreset('bangalore')}
-                      className="bg-[#FAF1ED] hover:bg-[#C85A32] hover:text-white text-[#C85A32] text-xs font-semibold px-3 py-1.5 rounded-xs border border-[#C85A32]/30 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                      key={addr.id}
+                      onClick={() => handleSelectSavedAddress(addr)}
+                      className={`p-3 border cursor-pointer text-xs transition-all ${
+                        selectedSavedAddrId === addr.id
+                          ? 'border-neutral-900 bg-neutral-50'
+                          : 'border-neutral-200 hover:border-neutral-400 bg-white'
+                      }`}
                     >
-                      <span>📍 Bangalore Studio HQ (560076)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyExpressPreset('mumbai')}
-                      className="bg-[#FAF9F6] hover:bg-[#1F1F1F] hover:text-white text-[#1F1F1F] text-xs font-semibold px-3 py-1.5 rounded-xs border border-[#D5D0C5] transition-colors inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>📍 Mumbai BKC (400051)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyExpressPreset('delhi')}
-                      className="bg-[#FAF9F6] hover:bg-[#1F1F1F] hover:text-white text-[#1F1F1F] text-xs font-semibold px-3 py-1.5 rounded-xs border border-[#D5D0C5] transition-colors inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>📍 New Delhi CP (110001)</span>
-                    </button>
-                  </div>
+                      <strong className="block font-serif text-neutral-900">{addr.fullName}</strong>
+                      <p className="text-[11px] text-neutral-500 line-clamp-1">{addr.street}, {addr.city}</p>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Contact Email & Phone */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-medium text-[#4A453C]">Email Address (for invoice) *</label>
-                      {isEmailValid && <span className="text-[10px] font-bold text-[#1E5638] flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#1E5638]" /> Valid Email</span>}
-                    </div>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@domain.com"
-                      className={`w-full px-3.5 py-2.5 text-xs border rounded-xs focus:outline-none transition-colors ${isEmailValid ? 'border-[#1E5638] bg-green-50/20' : 'border-[#D5D0C5] focus:border-[#C85A32]'
-                        }`}
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-medium text-[#4A453C]">Mobile Phone (for delivery SMS) *</label>
-                      {isPhoneValid && <span className="text-[10px] font-bold text-[#1E5638] flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#1E5638]" /> Verified Phone</span>}
-                    </div>
-                    <input
-                      type="tel"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+91 6282377918"
-                      className={`w-full px-3.5 py-2.5 text-xs border rounded-xs focus:outline-none transition-colors ${isPhoneValid ? 'border-[#1E5638] bg-green-50/20' : 'border-[#D5D0C5] focus:border-[#C85A32]'
-                        }`}
-                    />
-                  </div>
-                </div>
-
-                {/* Saved Addresses Picker (if available) */}
-                {currentUser?.addresses && currentUser.addresses.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <label className="block text-xs font-medium text-[#4A453C]">Select From Saved Addresses:</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {currentUser.addresses.map((addr) => (
-                        <div
-                          key={addr.id}
-                          onClick={() => handleSelectSavedAddress(addr)}
-                          className={`p-3.5 border rounded-xs cursor-pointer text-xs transition-all ${selectedSavedAddrId === addr.id
-                            ? 'border-[#C85A32] bg-[#FAF1ED]'
-                            : 'border-[#E0DCD3] hover:border-[#1F1F1F]'
-                            }`}
-                        >
-                          <div className="font-semibold text-[#1F1F1F]">{addr.fullName} ({addr.type})</div>
-                          <div className="text-[#6E685F] text-[11px] truncate">{addr.street}, {addr.city}</div>
-                          <div className="text-[#6E685F] text-[11px]">{addr.pincode}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Address Input Fields */}
-                <div className="space-y-4 pt-2">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-medium text-[#4A453C]">Full Recipient Name *</label>
-                      {isNameValid && <span className="text-[10px] font-bold text-[#1E5638] flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#1E5638]" /> Complete</span>}
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="First and Last Name"
-                      className={`w-full px-3.5 py-2.5 text-xs border rounded-xs focus:outline-none transition-colors ${isNameValid ? 'border-[#1E5638] bg-green-50/20' : 'border-[#D5D0C5] focus:border-[#C85A32]'
-                        }`}
-                    />
-                  </div>
-
-                  {/* Postal / Zip Code First for Auto-Lookup */}
-                  <div className="bg-[#FAF9F6] p-4 border border-[#EAE6DE] rounded-xs space-y-2">
-                    <div className="flex justify-between items-center">
-                      <label className="block text-xs font-bold text-[#1F1F1F]">
-                        Postal / Zip Code (Auto-Detects City & State) *
-                      </label>
-                      {pincodeDetectedNotice && (
-                        <span className="text-[10px] bg-green-100 text-[#1E5638] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Auto-Detected: {pincodeDetectedNotice}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={pincode}
-                      onChange={(e) => handlePincodeChange(e.target.value)}
-                      placeholder="Enter 6-digit Pincode (e.g. 560076, 400051, 110001)"
-                      className={`w-full px-3.5 py-2.5 text-xs font-mono font-bold border rounded-xs focus:outline-none transition-colors ${isPincodeValid ? 'border-[#1E5638] bg-white text-[#C85A32]' : 'border-[#D5D0C5] bg-white focus:border-[#C85A32]'
-                        }`}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-medium text-[#4A453C] mb-1">Street Address *</label>
-                      <input
-                        type="text"
-                        required
-                        value={street}
-                        onChange={(e) => setStreet(e.target.value)}
-                        placeholder="House / Building / Street"
-                        className={`w-full px-3.5 py-2.5 text-xs border rounded-xs focus:outline-none transition-colors ${isStreetValid ? 'border-[#1E5638] bg-green-50/20' : 'border-[#D5D0C5] focus:border-[#C85A32]'
-                          }`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-[#4A453C] mb-1">Apt / Suite (Optional)</label>
-                      <input
-                        type="text"
-                        value={apartment}
-                        onChange={(e) => setApartment(e.target.value)}
-                        placeholder="e.g. Suite 4B"
-                        className="w-full px-3.5 py-2.5 text-xs border border-[#D5D0C5] rounded-xs focus:outline-none focus:border-[#C85A32]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-[#4A453C] mb-1">City *</label>
-                      <input
-                        type="text"
-                        required
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="City"
-                        className={`w-full px-3.5 py-2.5 text-xs border rounded-xs focus:outline-none transition-colors ${isCityValid ? 'border-[#1E5638] bg-green-50/20' : 'border-[#D5D0C5] focus:border-[#C85A32]'
-                          }`}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-[#4A453C] mb-1">State / Province *</label>
-                      <input
-                        type="text"
-                        required
-                        value={state}
-                        onChange={(e) => setState(e.target.value)}
-                        placeholder="State / Region"
-                        className={`w-full px-3.5 py-2.5 text-xs border rounded-xs focus:outline-none transition-colors ${isStateValid ? 'border-[#1E5638] bg-green-50/20' : 'border-[#D5D0C5] focus:border-[#C85A32]'
-                          }`}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-[#4A453C] mb-1">Country / Region *</label>
-                    <select
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-xs border border-[#D5D0C5] rounded-xs focus:outline-none focus:border-[#C85A32] bg-white font-medium"
-                    >
-                      <option value="India">India</option>
-                      <option value="United States">United States</option>
-                      <option value="United Kingdom">United Kingdom</option>
-                      <option value="Canada">Canada</option>
-                      <option value="Germany">Germany</option>
-                      <option value="France">France</option>
-                      <option value="Sweden">Sweden</option>
-                      <option value="Japan">Japan</option>
-                      <option value="Australia">Australia</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Continue to Step 2 (Direct to Payment Gateway) */}
-                <div className="pt-4 flex flex-col sm:flex-row justify-between items-center gap-3 border-t border-[#F0ECE1]">
-                  <div className="text-xs text-[#7A7264] flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#1E5638]" />
-                    <span>Free Shipping Included & Fast Dispatch</span>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      if (!fullName || !street || !city || !pincode) {
-                        showToast('Please fill out all required address fields', 'warning');
-                        return;
-                      }
-                      syncFormToGoogleSheetsExcel();
-                      showToast('Address Verified', 'success', 'Synced live to Google Sheets Excel!');
-                      setStep(2);
-                    }}
-                    className="w-full sm:w-auto bg-[#C85A32] hover:bg-[#B34E2A] active:bg-[#A2421D] text-white text-xs font-bold tracking-wider uppercase px-9 py-4 rounded-xs transition-all duration-200 inline-flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg active:scale-[0.99]"
-                  >
-                    <span>CONTINUE TO PAYMENT</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
+              </div>
             )}
 
-            {/* STEP 2: PAYMENT GATEWAY (DIRECT ACCESS) */}
-            {step === 2 && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white p-6 sm:p-8 border border-[#EAE6DE] rounded-xs shadow-xs space-y-6"
-              >
-                {/* Online Payment vs COD Pricing Banner */}
-                {isOnlinePayment ? (
-                  <div className="bg-[#EBF5EF] border border-[#1E5638]/40 p-4 rounded-xs flex items-center justify-between text-xs text-[#1E5638] shadow-xs">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#1E5638] shrink-0" />
-                      <div>
-                        <strong>Instant {onlineDiscountPercent}% Online Payment Discount Active!</strong>
-                        <p className="text-[11px] text-[#1E5638]/80">You are saving {formatPrice(onlineDiscountAmount)} by paying online instead of Cash on Delivery.</p>
-                      </div>
-                    </div>
-                    <span className="bg-[#1E5638] text-white font-bold text-[10px] px-3 py-1 rounded-full uppercase shrink-0">
-                      Save {onlineDiscountPercent}% Instantly
-                    </span>
-                  </div>
-                ) : (
-                  <div className="bg-[#FAF9F6] border border-[#EAE6DE] p-4 rounded-xs flex items-center justify-between text-xs text-[#6E685F]">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="w-4 h-4 text-[#8C8477] shrink-0" />
-                      <span>Cash on Delivery (Standard Price — Pay {formatPrice(finalGrandTotal)} at delivery)</span>
-                    </div>
-                    <span className="bg-gray-200 text-gray-800 font-bold text-[10px] px-2.5 py-1 rounded-full uppercase shrink-0">
-                      Standard Price
-                    </span>
-                  </div>
-                )}
-
-                {/* Mode Selector Tabs */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('card')}
-                    className={`p-3 border rounded-xs flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMode === 'card' ? 'border-[#C85A32] bg-[#FAF1ED] font-bold text-[#C85A32]' : 'border-[#E0DCD3]'
-                      }`}
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Credit / Debit</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('upi')}
-                    className={`p-3 border rounded-xs flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMode === 'upi' ? 'border-[#C85A32] bg-[#FAF1ED] font-bold text-[#C85A32]' : 'border-[#E0DCD3]'
-                      }`}
-                  >
-                    <QrCode className="w-4 h-4" />
-                    <span>UPI / Instant QR</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('netbanking')}
-                    className={`p-3 border rounded-xs flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMode === 'netbanking' ? 'border-[#C85A32] bg-[#FAF1ED] font-bold text-[#C85A32]' : 'border-[#E0DCD3]'
-                      }`}
-                  >
-                    <Building2 className="w-4 h-4" />
-                    <span>Net Banking</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('applepay')}
-                    className={`p-3 border rounded-xs flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMode === 'applepay' ? 'border-[#C85A32] bg-[#FAF1ED] font-bold text-[#C85A32]' : 'border-[#E0DCD3]'
-                      }`}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    <span>Apple / Google Pay</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('bnpl')}
-                    className={`p-3 border rounded-xs flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMode === 'bnpl' ? 'border-[#C85A32] bg-[#FAF1ED] font-bold text-[#C85A32]' : 'border-[#E0DCD3]'
-                      }`}
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Klarna (BNPL)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('cod')}
-                    className={`p-3 border rounded-xs flex flex-col items-center gap-1.5 transition-all cursor-pointer ${paymentMode === 'cod' ? 'border-[#C85A32] bg-[#FAF1ED] font-bold text-[#C85A32]' : 'border-[#E0DCD3]'
-                      }`}
-                  >
-                    <Banknote className="w-4 h-4" />
-                    <span>Cash on Delivery</span>
-                  </button>
-                </div>
-
-                {/* Sub-Form Based on Selected Mode */}
-                <div className="pt-2">
-
-                  {/* Mode: Credit Card */}
-                  {paymentMode === 'card' && (
-                    <div className="space-y-4 bg-[#FAF9F6] p-5 border border-[#EAE6DE] rounded-xs">
-
-                      {/* Interactive Credit Card Visualizer */}
-                      <div className="w-full max-w-sm mx-auto bg-gradient-to-tr from-[#141414] via-[#222222] to-[#333333] text-white p-5 rounded-md shadow-lg space-y-4 font-mono border border-white/10">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-sans tracking-widest text-[#C85A32] font-bold">DIVACHIC BLACK CARD</span>
-                          <span className="text-xs font-bold">VISA / MASTER</span>
-                        </div>
-                        <div className="text-base tracking-widest pt-2">
-                          {cardNumber || '•••• •••• •••• ••••'}
-                        </div>
-                        <div className="flex justify-between text-[10px] text-gray-400 pt-1 font-sans">
-                          <div>
-                            <span className="block uppercase text-[8px]">Cardholder</span>
-                            <span className="font-semibold text-white uppercase">{cardHolder || 'VALUED CLIENT'}</span>
-                          </div>
-                          <div>
-                            <span className="block uppercase text-[8px]">Expires</span>
-                            <span className="font-semibold text-white">{cardExpiry || 'MM/YY'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 pt-2">
-                        <div>
-                          <label className="block text-xs font-medium text-[#4A453C] mb-1">Card Number</label>
-                          <input
-                            type="text"
-                            value={cardNumber}
-                            onChange={(e) => setCardNumber(e.target.value)}
-                            placeholder="4532 0000 0000 0000"
-                            className="w-full px-3 py-2 text-xs border border-[#D5D0C5] bg-white rounded-xs"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="col-span-2">
-                            <label className="block text-xs font-medium text-[#4A453C] mb-1">Name on Card</label>
-                            <input
-                              type="text"
-                              value={cardHolder}
-                              onChange={(e) => setCardHolder(e.target.value)}
-                              placeholder="Full Name"
-                              className="w-full px-3 py-2 text-xs border border-[#D5D0C5] bg-white rounded-xs"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-[#4A453C] mb-1">Expiry (MM/YY)</label>
-                            <input
-                              type="text"
-                              value={cardExpiry}
-                              onChange={(e) => setCardExpiry(e.target.value)}
-                              placeholder="08/29"
-                              className="w-full px-3 py-2 text-xs border border-[#D5D0C5] bg-white rounded-xs"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mode: UPI */}
-                  {paymentMode === 'upi' && (
-                    <div className="bg-[#FAF9F6] p-5 border border-[#EAE6DE] rounded-xs space-y-4 text-center">
-                      <div className="w-36 h-36 bg-white border border-[#D5D0C5] p-2 mx-auto rounded-xs shadow-xs flex items-center justify-center">
-                        <img
-                          src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=haute-boutique-pay"
-                          alt="Instant Payment QR"
-                          className="w-full h-full"
-                        />
-                      </div>
-                      <p className="text-xs text-[#7A7264]">Scan with GPay, PhonePe, Paytm, or any BHIM UPI app.</p>
-                      <div className="max-w-xs mx-auto flex gap-2">
-                        <input
-                          type="text"
-                          value={upiId}
-                          onChange={(e) => setUpiId(e.target.value)}
-                          placeholder="yourhandle@upi"
-                          className="flex-1 px-3 py-2 text-xs border border-[#D5D0C5] bg-white rounded-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => showToast('UPI handle verified!', 'success')}
-                          className="bg-[#1F1F1F] text-white text-xs px-3 py-2 rounded-xs"
-                        >
-                          Verify
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mode: Net Banking */}
-                  {paymentMode === 'netbanking' && (
-                    <div className="bg-[#FAF9F6] p-5 border border-[#EAE6DE] rounded-xs space-y-3">
-                      <label className="block text-xs font-medium text-[#4A453C]">Select Your Banking Institution</label>
-                      <select
-                        value={selectedBank}
-                        onChange={(e) => setSelectedBank(e.target.value)}
-                        className="w-full px-3 py-2.5 text-xs border border-[#D5D0C5] bg-white rounded-xs"
-                      >
-                        <option value="Chase Bank">Chase Bank (US)</option>
-                        <option value="Bank of America">Bank of America</option>
-                        <option value="Barclays">Barclays (UK)</option>
-                        <option value="Nordea Bank">Nordea Bank (Sweden)</option>
-                        <option value="BNP Paribas">BNP Paribas (France)</option>
-                        <option value="HDFC Bank">HDFC Bank (India)</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {/* Mode: Apple Pay */}
-                  {paymentMode === 'applepay' && (
-                    <div className="bg-[#FAF9F6] p-6 border border-[#EAE6DE] rounded-xs text-center space-y-3">
-                      <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center mx-auto">
-                        <Smartphone className="w-6 h-6" />
-                      </div>
-                      <p className="text-xs font-semibold text-[#1F1F1F]">Instant Biometric 1-Touch Checkout</p>
-                      <p className="text-[11px] text-[#7A7264]">Authenticate using FaceID / TouchID to charge saved default card.</p>
-                    </div>
-                  )}
-
-                  {/* Mode: BNPL Klarna */}
-                  {paymentMode === 'bnpl' && (
-                    <div className="bg-[#FAF9F6] p-5 border border-[#EAE6DE] rounded-xs space-y-2 text-xs">
-                      <div className="font-semibold text-[#C85A32]">Pay in 4 interest-free installments of {formatPrice(finalGrandTotal / 4)}</div>
-                      <p className="text-[#6E685F] text-[11px]">Due every 2 weeks. No hidden fees or credit score impact when paid on time.</p>
-                    </div>
-                  )}
-
-                  {/* Mode: Cash on Delivery */}
-                  {paymentMode === 'cod' && (
-                    <div className="bg-[#FAF9F6] p-5 border border-[#EAE6DE] rounded-xs space-y-3 text-xs">
-                      <div className="font-semibold text-[#1F1F1F]">Cash on Delivery Verification</div>
-                      <p className="text-[#7A7264] text-[11px]">
-                        To prevent fraudulent bookings, please verify your mobile phone with a 1-time passcode.
-                      </p>
-                      {!codOtpSent ? (
-                        <button
-                          type="button"
-                          onClick={handleSendCodOtp}
-                          className="bg-[#1F1F1F] hover:bg-[#C85A32] text-white text-xs px-4 py-2 rounded-xs transition-colors cursor-pointer"
-                        >
-                          Send OTP to {phone || 'Registered Phone'}
-                        </button>
-                      ) : (
-                        <div className="flex gap-2 max-w-xs">
-                          <input
-                            type="text"
-                            value={codOtp}
-                            onChange={(e) => setCodOtp(e.target.value)}
-                            placeholder="Enter OTP (884422)"
-                            className="flex-1 px-3 py-2 text-xs border border-[#D5D0C5] bg-white rounded-xs"
-                          />
-                          <span className="text-[11px] text-[#1E5638] flex items-center font-medium">
-                            Demo Code: 884422
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                </div>
-
-                {/* Final Order Placement Button */}
-                <div className="pt-6 border-t border-[#F0ECE1] flex justify-between items-center">
-                  <button
-                    onClick={() => setStep(1)}
-                    className="text-xs text-[#6E685F] hover:text-[#1F1F1F] font-semibold cursor-pointer"
-                  >
-                    ← Back to Address
-                  </button>
-
-                  <button
-                    id="place-order-button"
-                    onClick={handleCompleteOrder}
-                    className="bg-[#C85A32] hover:bg-[#B34E2A] text-white text-xs font-semibold tracking-wider uppercase px-10 py-4 rounded-xs transition-colors inline-flex items-center gap-2 cursor-pointer shadow-lg"
-                  >
-                    <Lock className="w-4 h-4" />
-                    <span>AUTHORIZE & PAY {formatPrice(finalGrandTotal)}</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-          </div>
-
-          {/* Right Column: Mini Cart Summary */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white p-6 border border-[#EAE6DE] rounded-xs shadow-xs space-y-4">
-              <h3 className="text-sm font-semibold text-[#1F1F1F] pb-3 border-b border-[#F0ECE1]">
-                In Your Bag ({cartCount} items)
-              </h3>
-
-              <div className="divide-y divide-[#F0ECE1] max-h-64 overflow-y-auto pr-1">
-                {cart.map((item) => (
-                  <div key={item.id} className="py-2.5 first:pt-0 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={item.product.images[0]}
-                        alt={item.product.name}
-                        className="w-12 h-12 object-cover rounded-xs border border-[#EAE6DE] shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-[#1F1F1F] truncate">{item.product.name}</p>
-                        <p className="text-[11px] text-[#8C8477]">Qty: {item.quantity}</p>
-                      </div>
-                    </div>
-                    <span className="font-medium text-[#1F1F1F]">
-                      {formatPrice(item.price * item.quantity)}
-                    </span>
-                  </div>
-                ))}
+            {/* Minimal Bottom-Line Form Inputs */}
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Lady Eleanor Vance"
+                  className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                />
               </div>
 
-              {/* Order Notes Preview */}
-              {orderNote && (
-                <div className="p-2.5 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xs text-[11px] text-[#6E685F]">
-                  <strong>Order Note:</strong> {orderNote}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                    Email Address (For Invoicing)
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="client@divachic.online"
+                    className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                    Contact Mobile Number *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+91 98200 12345"
+                    className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                  Street Address & House / Building Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={street}
+                  onChange={(e) => setStreet(e.target.value)}
+                  placeholder="e.g. 74/B Royal Promenade, Bandra West"
+                  className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                  Apartment, Suite, Landmark (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={apartment}
+                  onChange={(e) => setApartment(e.target.value)}
+                  placeholder="Penthouse A, Near Luxury Galleria"
+                  className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                    City / Metropolis *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Mumbai"
+                    className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                    State / Province *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    placeholder="Maharashtra"
+                    className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                    Postal / PIN Code (Auto-Lookup) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={pincode}
+                    onChange={(e) => handlePincodeChange(e.target.value)}
+                    placeholder="400051"
+                    className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm font-mono text-neutral-900 placeholder:text-neutral-300 outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* STEP 02: PAYMENT METHOD SELECTION */}
+          <div className="space-y-6 pt-4 border-t border-neutral-200">
+            <div>
+              <p className="font-serif tracking-widest text-xs uppercase text-neutral-400 mb-2">
+                Step 02 / Payment Mode & Delivery Fee
+              </p>
+              <h2 className="text-xl sm:text-2xl font-serif text-neutral-900 font-semibold tracking-tight">
+                Payment Method Selection
+              </h2>
+            </div>
+
+            {/* Payment Method Selector Cards */}
+            <div className="space-y-4">
+
+              {/* Option 1: Pay Online (UPI, Cards, NetBanking, Wallets) */}
+              <div
+                onClick={() => setPaymentMethod('ONLINE')}
+                className={`p-5 cursor-pointer rounded-none relative transition-all duration-300 ${
+                  paymentMethod === 'ONLINE'
+                    ? 'border-2 border-neutral-900 bg-neutral-50/50'
+                    : 'border border-neutral-200 hover:border-neutral-400 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                      paymentMethod === 'ONLINE' ? 'border-neutral-900' : 'border-neutral-300'
+                    }`}>
+                      {paymentMethod === 'ONLINE' && <div className="w-2 h-2 rounded-full bg-neutral-900" />}
+                    </div>
+                    <span className="font-bold text-sm text-neutral-900 tracking-tight font-serif">
+                      Prepaid / Instant Online Pay
+                    </span>
+                  </div>
+
+                  {/* Micro-icons row */}
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="px-1.5 py-0.5 border border-neutral-200 bg-white font-mono font-bold text-[10px] rounded-xs text-[#5f259f]">UPI</span>
+                    <span className="px-1.5 py-0.5 border border-neutral-200 bg-white font-bold text-[10px] rounded-xs text-neutral-700">GPay</span>
+                    <span className="px-1.5 py-0.5 border border-neutral-200 bg-white font-bold text-[10px] rounded-xs text-[#5f259f]">PhonePe</span>
+                    <span className="px-1.5 py-0.5 border border-neutral-200 bg-white font-bold text-[10px] rounded-xs text-[#1a1f71]">Cards</span>
+                  </div>
+                </div>
+
+                <div className="mt-2">
+                  <span className="text-[10px] font-bold tracking-widest uppercase bg-emerald-900 text-emerald-100 px-2.5 py-0.5 inline-block">
+                    COMPLIMENTARY EXPRESS DELIVERY
+                  </span>
+                </div>
+
+                <p className="text-xs text-neutral-500 mt-2 leading-relaxed font-serif">
+                  Zero shipping fee applied. Fully encrypted & instant confirmation.
+                </p>
+              </div>
+
+              {/* Option 2: Cash on Delivery (COD) */}
+              <div
+                onClick={() => setPaymentMethod('COD')}
+                className={`p-5 cursor-pointer rounded-none relative transition-all duration-300 ${
+                  paymentMethod === 'COD'
+                    ? 'border-2 border-neutral-900 bg-neutral-50/50'
+                    : 'border border-neutral-200 hover:border-neutral-400 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                      paymentMethod === 'COD' ? 'border-neutral-900' : 'border-neutral-300'
+                    }`}>
+                      {paymentMethod === 'COD' && <div className="w-2 h-2 rounded-full bg-neutral-900" />}
+                    </div>
+                    <span className="font-bold text-sm text-neutral-900 tracking-tight font-serif">
+                      Cash on Delivery
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2">
+                  <span className="text-[10px] font-bold tracking-widest uppercase bg-neutral-200 text-neutral-800 px-2.5 py-0.5 inline-block">
+                    STANDARD SHIPPING: ₹150
+                  </span>
+                </div>
+
+                <p className="text-xs text-neutral-500 mt-2 leading-relaxed font-serif">
+                  Pay cash or scan QR at your doorstep upon arrival.
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN: Editorial Sticky Order Summary */}
+        <div>
+          <div className="bg-[#fafafa] border border-neutral-200/80 p-6 lg:p-8 sticky top-6 space-y-6">
+
+            <div className="border-b border-neutral-200/80 pb-4 flex items-center justify-between">
+              <h3 className="font-serif text-lg text-neutral-900 tracking-tight font-semibold">
+                Order Summary
+              </h3>
+              <span className="text-xs font-serif text-neutral-400 uppercase tracking-widest">
+                {cartCount} {cartCount === 1 ? 'Piece' : 'Pieces'}
+              </span>
+            </div>
+
+            {/* Condensed Item Preview List with 3:4 Portrait Thumbnails */}
+            <div className="divide-y divide-neutral-200/60 max-h-72 overflow-y-auto pr-1">
+              {cart.map((item) => (
+                <div key={`${item.productId}-${item.selectedColor || ''}-${item.selectedSize || ''}`} className="py-3.5 flex items-center gap-3.5">
+                  <div className="w-14 aspect-[3/4] bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
+                    <img
+                      src={item.product.images[0] || 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=800&auto=format&fit=crop'}
+                      alt={item.product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-serif font-medium text-neutral-900 line-clamp-1">
+                      {item.product.name}
+                    </h4>
+                    <p className="text-[10px] text-neutral-500 mt-0.5 font-serif">
+                      Qty: {item.quantity} {item.selectedColor ? `• ${item.selectedColor}` : ''} {item.selectedSize ? `• ${item.selectedSize}` : ''}
+                    </p>
+                    <span className="text-xs font-serif font-medium text-neutral-900 mt-1 block">
+                      ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Price Breakdown Rows */}
+            <div className="border-t border-neutral-200/80 pt-4 space-y-3 text-xs font-serif">
+              <div className="flex justify-between text-neutral-600">
+                <span>Subtotal</span>
+                <span className="text-neutral-900 font-medium">₹{subtotal.toLocaleString('en-IN')}</span>
+              </div>
+
+              {/* Delivery Fee Row */}
+              <div className="flex justify-between items-center text-neutral-600">
+                <span>Delivery Fee</span>
+                {paymentMethod === 'ONLINE' ? (
+                  <span className="text-emerald-700 font-semibold flex items-center gap-2">
+                    <span className="tracking-wider">FREE</span>
+                    <span className="line-through text-neutral-400 text-xs font-normal">₹150</span>
+                  </span>
+                ) : (
+                  <span className="text-neutral-900 font-medium">+₹150</span>
+                )}
+              </div>
+
+              {/* Coupon Discount Row if applicable */}
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-medium">
+                  <span>Applied Voucher ({appliedCoupon?.code || 'Promo'})</span>
+                  <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
                 </div>
               )}
 
-              {/* Price Details */}
-              <div className="space-y-2 pt-2 border-t border-[#F0ECE1] text-xs text-[#555048]">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span className="font-medium text-[#1F1F1F]">{formatPrice(cartSubtotal)}</span>
-                </div>
-                {appliedCoupon && (
-                  <div className="flex justify-between text-[#1E5638]">
-                    <span>Discount ({appliedCoupon.code}):</span>
-                    <span>-{formatPrice(cartDiscount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Shipping Fee:</span>
-                  <span className="font-medium text-[#1F1F1F]">
-                    {shippingFee === 0 ? 'FREE' : formatPrice(shippingFee)}
+              {/* Total Amount Row */}
+              <div className="flex justify-between items-baseline pt-4 border-t border-neutral-200/80">
+                <div>
+                  <span className="block text-[10px] font-serif tracking-widest uppercase text-neutral-400">
+                    Final Payable
+                  </span>
+                  <span className="text-xs text-neutral-500 font-serif">
+                    Inclusive of luxury dispatch
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Estimated Tax (8%):</span>
-                  <span>{formatPrice(finalTax)}</span>
-                </div>
-                {/* Online Payment Discount Line Item */}
-                {isOnlinePayment && onlineDiscountAmount > 0 && (
-                  <div className="flex justify-between text-[#1E5638] font-semibold bg-[#EBF5EF] p-2 rounded-xs border border-[#1E5638]/20">
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-[#1E5638]" />
-                      <span>Online Payment ({onlineDiscountPercent}% OFF):</span>
-                    </span>
-                    <span>-{formatPrice(onlineDiscountAmount)}</span>
-                  </div>
-                )}
-                <div className="pt-3 border-t border-[#F0ECE1] flex justify-between text-base font-bold text-[#1F1F1F]">
-                  <span>Grand Total:</span>
-                  <span className="text-[#C85A32]">{formatPrice(finalGrandTotal)}</span>
+                <div className="text-right">
+                  <span className="text-2xl font-serif text-neutral-900 font-semibold tracking-tight">
+                    ₹{finalPayable.toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
-
             </div>
-          </div>
 
+            {/* Primary Action Button */}
+            <div>
+              {paymentMethod === 'ONLINE' ? (
+                <button
+                  type="button"
+                  onClick={handleProceedToCashfreePayment}
+                  disabled={isProcessing}
+                  className="w-full bg-neutral-900 hover:bg-black text-white py-4 px-6 text-xs font-serif font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {isProcessing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>INITIALIZING SECURE CHECKOUT...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>PROCEED TO SECURE PAYMENT • ₹{finalPayable.toLocaleString('en-IN')}</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConfirmCodOrder}
+                  disabled={isProcessing}
+                  className="w-full bg-neutral-900 hover:bg-black text-white py-4 px-6 text-xs font-serif font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer shadow-sm disabled:opacity-50"
+                >
+                  {isProcessing ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>CONFIRMING COD ORDER...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Truck className="w-3.5 h-3.5" />
+                      <span>CONFIRM CASH ON DELIVERY ORDER • ₹{finalPayable.toLocaleString('en-IN')}</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+
+            {/* Trust & Assurance Banner */}
+            <div className="pt-2 border-t border-neutral-200/80 space-y-2 text-[11px] text-neutral-500 font-serif">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-neutral-700 shrink-0" />
+                <span>100% Authentic Luxury Guarantee</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Package className="w-3.5 h-3.5 text-neutral-700 shrink-0" />
+                <span>Discreet & Insured Packaging</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-neutral-700 shrink-0" />
+                <span>Estimated Courier Arrival: {calculateDeliveryDate(0).formattedDate}</span>
+              </div>
+            </div>
+
+          </div>
         </div>
 
       </div>
