@@ -69,55 +69,9 @@ export const CheckoutView: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // 1-Tap Express Presets
-  const applyExpressPreset = (cityPreset: 'bangalore' | 'mumbai' | 'delhi') => {
-    if (cityPreset === 'bangalore') {
-      if (!fullName) setFullName('Valued Customer');
-      if (!email) setEmail('divachic@icloud.com');
-      if (!phone) setPhone('+91 6282377918');
-      setStreet('#42, 100 Feet Ring Road, Stage 2, BTM Layout');
-      setCity('Bangalore');
-      setState('Karnataka');
-      setPincode('560076');
-      setCountry('India');
-    } else if (cityPreset === 'mumbai') {
-      if (!fullName) setFullName('Valued Customer');
-      if (!email) setEmail('customer@divachic.online');
-      if (!phone) setPhone('+91 9820098200');
-      setStreet('Bandra-Kurla Complex, Block G');
-      setCity('Mumbai');
-      setState('Maharashtra');
-      setPincode('400051');
-      setCountry('India');
-    } else if (cityPreset === 'delhi') {
-      if (!fullName) setFullName('Valued Customer');
-      if (!email) setEmail('customer@divachic.online');
-      if (!phone) setPhone('+91 9811098110');
-      setStreet('Connaught Place, Block C');
-      setCity('New Delhi');
-      setState('Delhi');
-      setPincode('110001');
-      setCountry('India');
-    }
-    showToast('Express Address Loaded', 'success', 'Form auto-filled for rapid checkout.');
-  };
-
-  // Indian Pincode Auto-Lookup (6 digits)
+  // Manual PIN code change (6 digits, no auto-fill overwrite)
   const handlePincodeChange = (val: string) => {
-    setPincode(val);
-    const clean = val.replace(/\D/g, '');
-    if (clean.length === 6) {
-      if (clean.startsWith('560')) { setCity('Bangalore'); setState('Karnataka'); setCountry('India'); }
-      else if (clean.startsWith('400')) { setCity('Mumbai'); setState('Maharashtra'); setCountry('India'); }
-      else if (clean.startsWith('110')) { setCity('New Delhi'); setState('Delhi'); setCountry('India'); }
-      else if (clean.startsWith('600')) { setCity('Chennai'); setState('Tamil Nadu'); setCountry('India'); }
-      else if (clean.startsWith('700')) { setCity('Kolkata'); setState('West Bengal'); setCountry('India'); }
-      else if (clean.startsWith('500')) { setCity('Hyderabad'); setState('Telangana'); setCountry('India'); }
-      else if (clean.startsWith('380')) { setCity('Ahmedabad'); setState('Gujarat'); setCountry('India'); }
-      else if (clean.startsWith('411')) { setCity('Pune'); setState('Maharashtra'); setCountry('India'); }
-      else if (clean.startsWith('682')) { setCity('Kochi'); setState('Kerala'); setCountry('India'); }
-      else { setCountry('India'); }
-    }
+    setPincode(val.replace(/\D/g, '').slice(0, 6));
   };
 
   const handleSelectSavedAddress = (addr: Address) => {
@@ -749,36 +703,6 @@ export const CheckoutView: React.FC = () => {
               </h2>
             </div>
 
-            {/* 1-Tap Express Presets */}
-            <div className="space-y-2 pt-1">
-              <span className="text-[10px] font-serif tracking-widest uppercase text-neutral-400 block">
-                Quick Autofill Presets:
-              </span>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => applyExpressPreset('bangalore')}
-                  className="px-3 py-1.5 text-[11px] font-serif tracking-wider uppercase border border-neutral-300 hover:border-neutral-900 text-neutral-700 hover:text-neutral-900 bg-white transition-colors cursor-pointer"
-                >
-                  📍 Bangalore (560076)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyExpressPreset('mumbai')}
-                  className="px-3 py-1.5 text-[11px] font-serif tracking-wider uppercase border border-neutral-300 hover:border-neutral-900 text-neutral-700 hover:text-neutral-900 bg-white transition-colors cursor-pointer"
-                >
-                  📍 Mumbai (400051)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyExpressPreset('delhi')}
-                  className="px-3 py-1.5 text-[11px] font-serif tracking-wider uppercase border border-neutral-300 hover:border-neutral-900 text-neutral-700 hover:text-neutral-900 bg-white transition-colors cursor-pointer"
-                >
-                  📍 New Delhi (110001)
-                </button>
-              </div>
-            </div>
-
             {/* Saved Address Selector (if member has saved addresses) */}
             {currentUser && currentUser.addresses.length > 0 && (
               <div className="space-y-2">
@@ -813,6 +737,7 @@ export const CheckoutView: React.FC = () => {
                 <input
                   type="text"
                   required
+                  autoComplete="off"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Lady Eleanor Vance"
@@ -827,6 +752,7 @@ export const CheckoutView: React.FC = () => {
                   </label>
                   <input
                     type="email"
+                    autoComplete="off"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="client@divachic.online"
@@ -841,6 +767,7 @@ export const CheckoutView: React.FC = () => {
                   <input
                     type="tel"
                     required
+                    autoComplete="off"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+91 98200 12345"
@@ -856,6 +783,7 @@ export const CheckoutView: React.FC = () => {
                 <input
                   type="text"
                   required
+                  autoComplete="off"
                   value={street}
                   onChange={(e) => setStreet(e.target.value)}
                   placeholder="e.g. 74/B Royal Promenade, Bandra West"
@@ -869,6 +797,7 @@ export const CheckoutView: React.FC = () => {
                 </label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={apartment}
                   onChange={(e) => setApartment(e.target.value)}
                   placeholder="Penthouse A, Near Luxury Galleria"
@@ -884,6 +813,7 @@ export const CheckoutView: React.FC = () => {
                   <input
                     type="text"
                     required
+                    autoComplete="off"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="Mumbai"
@@ -898,6 +828,7 @@ export const CheckoutView: React.FC = () => {
                   <input
                     type="text"
                     required
+                    autoComplete="off"
                     value={state}
                     onChange={(e) => setState(e.target.value)}
                     placeholder="Maharashtra"
@@ -909,12 +840,13 @@ export const CheckoutView: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-[10px] tracking-widest uppercase font-serif text-neutral-500 mb-1">
-                    Postal / PIN Code (Auto-Lookup) *
+                    Postal / PIN Code *
                   </label>
                   <input
                     type="text"
                     required
                     maxLength={6}
+                    autoComplete="off"
                     value={pincode}
                     onChange={(e) => handlePincodeChange(e.target.value)}
                     placeholder="400051"
@@ -928,6 +860,7 @@ export const CheckoutView: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
                     value={country}
                     onChange={(e) => setCountry(e.target.value)}
                     className="w-full border-b border-neutral-300 focus:border-neutral-900 bg-transparent py-2.5 text-sm text-neutral-900 outline-none transition-colors"
