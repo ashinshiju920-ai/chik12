@@ -10,7 +10,9 @@ import {
   Currency, 
   CategoryType,
   Review,
-  StoreCategory
+  StoreCategory,
+  FloatingBannerConfig,
+  DEFAULT_FLOATING_BANNER
 } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_COUPONS, INITIAL_ORDERS } from '../data/products';
 import {
@@ -39,6 +41,8 @@ import {
   updateFirestoreOrderStatus,
   subscribeToHomeBanner,
   saveHomeBannerToFirestore,
+  subscribeToFloatingBanner,
+  saveFloatingBannerToFirestore,
   subscribeToReviews,
   saveReviewToFirestore,
   deleteReviewFromFirestore,
@@ -214,6 +218,11 @@ interface StoreContextType {
   // Site Banners & Branding Customizer
   siteBanners: SiteBanners;
   updateSiteBanners: (updated: Partial<SiteBanners>) => void;
+
+  // Floating Announcement Banner (Real-time synced across all users)
+  floatingBanner: FloatingBannerConfig;
+  updateFloatingBanner: (updated: Partial<FloatingBannerConfig>) => Promise<void>;
+  toggleFloatingBanner: () => Promise<void>;
   
   // Firebase Real-time Cloud Sync
   isFirebaseOnline: boolean;
@@ -395,6 +404,45 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return next;
     });
     showToast('Site Banners & Announcements Updated', 'success', 'Synced across all visitors in real-time');
+  };
+
+  // Floating Announcement Banner State (Synced real-time with Firestore)
+  const [floatingBanner, setFloatingBanner] = useState<FloatingBannerConfig>(() => {
+    try {
+      const parsed = safeJsonParse<FloatingBannerConfig>(
+        localStorage.getItem('diva_floating_banner'),
+        DEFAULT_FLOATING_BANNER
+      );
+      return { ...DEFAULT_FLOATING_BANNER, ...(parsed || {}) };
+    } catch {
+      return DEFAULT_FLOATING_BANNER;
+    }
+  });
+
+  const updateFloatingBanner = async (updated: Partial<FloatingBannerConfig>) => {
+    setFloatingBanner((prev) => {
+      const next = { ...prev, ...updated };
+      try {
+        localStorage.setItem('diva_floating_banner', JSON.stringify(next));
+      } catch {}
+      saveFloatingBannerToFirestore(next).catch((err) =>
+        console.warn('Firestore floating_banner sync warning:', err)
+      );
+      return next;
+    });
+  };
+
+  const toggleFloatingBanner = async () => {
+    setFloatingBanner((prev) => {
+      const next = { ...prev, enabled: !prev.enabled };
+      try {
+        localStorage.setItem('diva_floating_banner', JSON.stringify(next));
+      } catch {}
+      saveFloatingBannerToFirestore(next).catch((err) =>
+        console.warn('Firestore floating_banner toggle sync warning:', err)
+      );
+      return next;
+    });
   };
 
   const setCurrency = (c: Currency) => {
@@ -1049,6 +1097,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           editorialImage: cloudBanner.editorialImage || prev.editorialImage,
           logoUrl: cloudBanner.logoUrl || prev.logoUrl
         }));
+        if (cloudBanner.floatingBanner) {
+          setFloatingBanner((prev) => ({ ...prev, ...cloudBanner.floatingBanner }));
+        }
+      }
+    });
+
+    // 2b. Floating Announcement Banner onSnapshot (settings/floating_banner)
+    const unsubscribeFloatingBanner = subscribeToFloatingBanner((cloudFloatingBanner) => {
+      if (cloudFloatingBanner) {
+        setFloatingBanner((prev) => {
+          const merged = { ...prev, ...cloudFloatingBanner };
+          try {
+            localStorage.setItem('diva_floating_banner', JSON.stringify(merged));
+          } catch {}
+          return merged;
+        });
       }
     });
 
@@ -1115,6 +1179,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       unsubscribeProducts();
       unsubscribeBanner();
+      unsubscribeFloatingBanner();
       unsubscribeReviews();
       unsubscribeOrders();
       unsubscribeCategories();
@@ -2290,6 +2355,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         syncFirebaseData: async () => {},
         siteBanners,
         updateSiteBanners,
+        floatingBanner,
+        updateFloatingBanner,
+        toggleFloatingBanner,
         theme,
         setTheme,
         isDarkMode,

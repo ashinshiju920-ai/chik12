@@ -207,3 +207,98 @@ export type ActivePage =
   | 'admin';
 
 export type Currency = 'INR' | 'USD' | 'EUR' | 'GBP';
+
+export type FloatingBannerFont =
+  | 'Plus Jakarta Sans'
+  | 'Playfair Display'
+  | 'Bodoni Moda'
+  | 'Cinzel'
+  | 'Cormorant Garamond'
+  | 'Inter'
+  | 'Montserrat'
+  | 'Prata'
+  | 'Space Grotesk'
+  | 'Tenor Sans';
+
+export type FloatingBannerVariant = 'floating-pill' | 'editorial-strip' | 'marquee-ticker' | 'glass-glow';
+
+export type FloatingBannerIcon =
+  | 'sparkles'
+  | 'flame'
+  | 'gift'
+  | 'zap'
+  | 'tag'
+  | 'truck'
+  | 'star'
+  | 'crown'
+  | 'heart'
+  | 'bell'
+  | 'none';
+
+export interface FloatingBannerConfig {
+  enabled: boolean;
+  text: string;
+  badgeText: string;
+  showBadge: boolean;
+  linkText: string;
+  linkUrl: string;
+  iconName: FloatingBannerIcon;
+  showCloseButton: boolean;
+
+  // Typography
+  fontFamily: FloatingBannerFont | string;
+  fontSize: 'xs' | 'sm' | 'base' | 'lg';
+  fontWeight: '400' | '500' | '600' | '700';
+  letterSpacing: 'normal' | 'wide' | 'wider' | 'widest';
+  textTransform: 'none' | 'uppercase' | 'capitalize';
+
+  // Colors & Visual Styling
+  bgStyle: 'solid' | 'gradient' | 'glass';
+  bgColor: string;
+  bgGradientEnd?: string;
+  textColor: string;
+
+  // Accents & Buttons
+  badgeBg: string;
+  badgeTextColor: string;
+  btnBg: string;
+  btnTextColor: string;
+  borderColor: string;
+
+  // Layout & Visual Effects
+  designVariant: FloatingBannerVariant;
+  pulseBadge: boolean;
+  glowEffect: boolean;
+  displayScope: 'home_only' | 'all_pages';
+  paddingY?: 'compact' | 'comfortable' | 'spacious';
+}
+
+export const DEFAULT_FLOATING_BANNER: FloatingBannerConfig = {
+  enabled: true,
+  text: 'Complimentary Express Worldwide Shipping & Bespoke Gift Packaging on Orders Over ₹2,999',
+  badgeText: 'AUTUMN DROP',
+  showBadge: true,
+  linkText: 'SHOP NOW',
+  linkUrl: '/shop',
+  iconName: 'sparkles',
+  showCloseButton: true,
+  fontFamily: 'Plus Jakarta Sans',
+  fontSize: 'xs',
+  fontWeight: '600',
+  letterSpacing: 'wide',
+  textTransform: 'uppercase',
+  bgStyle: 'gradient',
+  bgColor: '#C85A32',
+  bgGradientEnd: '#8E381A',
+  textColor: '#FFFFFF',
+  badgeBg: '#FFFFFF',
+  badgeTextColor: '#C85A32',
+  btnBg: '#FFFFFF',
+  btnTextColor: '#1F1F1F',
+  borderColor: 'rgba(255, 255, 255, 0.25)',
+  designVariant: 'floating-pill',
+  pulseBadge: true,
+  glowEffect: true,
+  displayScope: 'home_only',
+  paddingY: 'comfortable'
+};

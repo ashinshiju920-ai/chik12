@@ -76,8 +76,24 @@ import {
   RefreshCcw,
   Zap,
   Palette,
+  Flame,
+  Gift,
+  Crown,
+  Heart,
+  Type,
 } from 'lucide-react';
-import { Product, Order, OrderStatus, Coupon, Review, StoreCategory } from '../../types';
+import { 
+  Product, 
+  Order, 
+  OrderStatus, 
+  Coupon, 
+  Review, 
+  StoreCategory,
+  FloatingBannerConfig,
+  FloatingBannerFont,
+  FloatingBannerVariant,
+  FloatingBannerIcon
+} from '../../types';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { 
   saveProductToFirestore, 
@@ -152,6 +168,371 @@ interface CMSPageItem {
   status: 'Published' | 'Draft';
 }
 
+const FLOATING_BANNER_PRESETS = [
+  {
+    name: 'Terracotta Couture',
+    desc: 'Burnt orange gradient with clean white typography',
+    bgStyle: 'gradient' as const,
+    bgColor: '#C85A32',
+    bgGradientEnd: '#8E381A',
+    textColor: '#FFFFFF',
+    badgeBg: '#FFFFFF',
+    badgeTextColor: '#C85A32',
+    btnBg: '#FFFFFF',
+    btnTextColor: '#1F1F1F',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  {
+    name: 'Obsidian & 24K Gold',
+    desc: 'Deep noir with luminous champagne gold accents',
+    bgStyle: 'gradient' as const,
+    bgColor: '#121212',
+    bgGradientEnd: '#1F1F1F',
+    textColor: '#F5E6C8',
+    badgeBg: '#D4AF37',
+    badgeTextColor: '#121212',
+    btnBg: '#D4AF37',
+    btnTextColor: '#121212',
+    borderColor: 'rgba(212, 175, 55, 0.4)',
+  },
+  {
+    name: 'Velvet Emerald',
+    desc: 'High-end botanical dark emerald with gold details',
+    bgStyle: 'gradient' as const,
+    bgColor: '#064E3B',
+    bgGradientEnd: '#022C22',
+    textColor: '#ECFDF5',
+    badgeBg: '#10B981',
+    badgeTextColor: '#FFFFFF',
+    btnBg: '#F5E6C8',
+    btnTextColor: '#064E3B',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  {
+    name: 'Imperial Plum',
+    desc: 'Royal runway deep purple with lilac highlights',
+    bgStyle: 'gradient' as const,
+    bgColor: '#3B0764',
+    bgGradientEnd: '#240046',
+    textColor: '#FAF5FF',
+    badgeBg: '#C084FC',
+    badgeTextColor: '#240046',
+    btnBg: '#FFFFFF',
+    btnTextColor: '#3B0764',
+    borderColor: 'rgba(192, 132, 252, 0.35)',
+  },
+  {
+    name: 'Parisian Minimalist',
+    desc: 'Clean editorial monochrome with crisp borders',
+    bgStyle: 'solid' as const,
+    bgColor: '#FFFFFF',
+    bgGradientEnd: '#F2EFE9',
+    textColor: '#1F1F1F',
+    badgeBg: '#1F1F1F',
+    badgeTextColor: '#FFFFFF',
+    btnBg: '#1F1F1F',
+    btnTextColor: '#FFFFFF',
+    borderColor: '#EAE6DE',
+  },
+  {
+    name: 'Ruby Crimson Flame',
+    desc: 'Bold urgent crimson for flash drops and sales',
+    bgStyle: 'gradient' as const,
+    bgColor: '#B91C1C',
+    bgGradientEnd: '#7F1D1D',
+    textColor: '#FEF2F2',
+    badgeBg: '#FFFFFF',
+    badgeTextColor: '#B91C1C',
+    btnBg: '#FFFFFF',
+    btnTextColor: '#991B1B',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  }
+];
+
+const FONT_OPTIONS: { id: FloatingBannerFont; name: string; style: string }[] = [
+  { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans', style: 'Modern Clean Sans' },
+  { id: 'Playfair Display', name: 'Playfair Display', style: 'Editorial Luxury Serif' },
+  { id: 'Bodoni Moda', name: 'Bodoni Moda', style: 'Haute Couture Serif' },
+  { id: 'Cinzel', name: 'Cinzel', style: 'Roman Classical Display' },
+  { id: 'Cormorant Garamond', name: 'Cormorant Garamond', style: 'Delicate Fine Serif' },
+  { id: 'Inter', name: 'Inter', style: 'Ultra Crisp Neutral' },
+  { id: 'Montserrat', name: 'Montserrat', style: 'Geometric Fashion' },
+  { id: 'Space Grotesk', name: 'Space Grotesk', style: 'Modern Avant-Garde' },
+  { id: 'Tenor Sans', name: 'Tenor Sans', style: 'Graceful Runway' },
+  { id: 'Prata', name: 'Prata', style: 'Didone Editorial' },
+];
+
+const VARIANT_OPTIONS: { id: FloatingBannerVariant; label: string; icon: string; desc: string }[] = [
+  { id: 'floating-pill', label: 'Floating Pill', icon: '💊', desc: 'Centered floating capsule hovering above the Hero' },
+  { id: 'editorial-strip', label: 'Editorial Strip', icon: '▬', desc: 'Full-width flush minimal announcement bar' },
+  { id: 'marquee-ticker', label: 'Marquee Ticker', icon: '✦', desc: 'Smooth continuous animated scrolling loop' },
+  { id: 'glass-glow', label: 'Glass Glow', icon: '✨', desc: 'Frosted glassmorphism with ambient glowing border' },
+];
+
+const ICON_OPTIONS: { id: FloatingBannerIcon; label: string }[] = [
+  { id: 'sparkles', label: 'Sparkles' },
+  { id: 'flame', label: 'Flame / Hot' },
+  { id: 'gift', label: 'Gift Box' },
+  { id: 'zap', label: 'Lightning / Fast' },
+  { id: 'tag', label: 'Discount Tag' },
+  { id: 'truck', label: 'Shipping Truck' },
+  { id: 'star', label: 'Star' },
+  { id: 'crown', label: 'Crown / VIP' },
+  { id: 'heart', label: 'Heart' },
+  { id: 'bell', label: 'Bell Notification' },
+  { id: 'none', label: 'None' },
+];
+
+const ColorPickerInput: React.FC<{
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+}> = ({ label, value, onChange }) => {
+  return (
+    <div className="p-3 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl space-y-1.5">
+      <label className="text-[11px] font-bold text-[#1F1F1F] block truncate">{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value.startsWith('#') && value.length === 7 ? value : '#C85A32'}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-8 h-8 rounded-lg border border-[#D5D0C5] cursor-pointer p-0.5 bg-white shrink-0"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full p-1.5 bg-white border border-[#D5D0C5] rounded-lg text-xs font-mono"
+        />
+      </div>
+    </div>
+  );
+};
+
+const FloatingBannerPreviewBox: React.FC<{ config: FloatingBannerConfig }> = ({ config }) => {
+  if (!config) return null;
+
+  const fontStyle: React.CSSProperties = {
+    fontFamily: config.fontFamily ? `'${config.fontFamily}', sans-serif` : undefined,
+    letterSpacing:
+      config.letterSpacing === 'widest' ? '0.22em' :
+      config.letterSpacing === 'wider' ? '0.12em' :
+      config.letterSpacing === 'wide' ? '0.06em' : 'normal',
+    textTransform: config.textTransform || 'uppercase',
+    fontWeight: Number(config.fontWeight) || 600,
+  };
+
+  const textSizeClass =
+    config.fontSize === 'lg' ? 'text-sm sm:text-base' :
+    config.fontSize === 'base' ? 'text-xs sm:text-sm' :
+    config.fontSize === 'sm' ? 'text-[11px] sm:text-xs' :
+    'text-[10px] sm:text-[11px]';
+
+  const getBackgroundStyle = (): React.CSSProperties => {
+    if (config.bgStyle === 'gradient') {
+      const start = config.bgColor || '#C85A32';
+      const end = config.bgGradientEnd || '#8E381A';
+      return {
+        background: `linear-gradient(135deg, ${start} 0%, ${end} 100%)`,
+        color: config.textColor || '#FFFFFF',
+        borderColor: config.borderColor || 'rgba(255, 255, 255, 0.25)'
+      };
+    }
+    if (config.bgStyle === 'glass') {
+      return {
+        backgroundColor: config.bgColor || 'rgba(31, 31, 31, 0.85)',
+        backdropFilter: 'blur(16px)',
+        color: config.textColor || '#FFFFFF',
+        borderColor: config.borderColor || 'rgba(255, 255, 255, 0.2)'
+      };
+    }
+    return {
+      backgroundColor: config.bgColor || '#C85A32',
+      color: config.textColor || '#FFFFFF',
+      borderColor: config.borderColor || 'rgba(255, 255, 255, 0.2)'
+    };
+  };
+
+  const bgStyle = getBackgroundStyle();
+
+  const renderIcon = (name: FloatingBannerIcon) => {
+    switch (name) {
+      case 'sparkles': return <Sparkles className="w-3 h-3" />;
+      case 'flame': return <Flame className="w-3 h-3" />;
+      case 'gift': return <Gift className="w-3 h-3" />;
+      case 'zap': return <Zap className="w-3 h-3" />;
+      case 'tag': return <Tag className="w-3 h-3" />;
+      case 'truck': return <Truck className="w-3 h-3" />;
+      case 'star': return <Star className="w-3 h-3" />;
+      case 'crown': return <Crown className="w-3 h-3" />;
+      case 'heart': return <Heart className="w-3 h-3" />;
+      case 'bell': return <Bell className="w-3 h-3" />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="relative w-full overflow-hidden select-none">
+      {!config.enabled && (
+        <div className="absolute inset-0 bg-neutral-900/60 backdrop-blur-xs z-30 rounded-xl flex items-center justify-center p-2 text-white">
+          <span className="text-xs font-bold bg-neutral-900/90 px-3 py-1.5 rounded-full border border-white/20 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-red-400" />
+            Banner is currently OFF (toggle switch above to publish live)
+          </span>
+        </div>
+      )}
+
+      {config.designVariant === 'floating-pill' && (
+        <div className="w-full flex justify-center py-1">
+          <div
+            style={bgStyle}
+            className="w-full rounded-full border px-4 py-2 flex items-center justify-between gap-3 shadow-md"
+          >
+            <div className="flex items-center gap-2.5 min-w-0 flex-1 justify-center">
+              {config.showBadge && config.badgeText && (
+                <span
+                  style={{
+                    backgroundColor: config.badgeBg || '#FFFFFF',
+                    color: config.badgeTextColor || '#C85A32'
+                  }}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0"
+                >
+                  {config.pulseBadge && <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />}
+                  {renderIcon(config.iconName)}
+                  <span>{config.badgeText}</span>
+                </span>
+              )}
+              <p style={fontStyle} className={`${textSizeClass} truncate leading-tight`}>
+                {config.text || 'Your announcement message...'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {config.linkText && (
+                <span
+                  style={{
+                    backgroundColor: config.btnBg || '#FFFFFF',
+                    color: config.btnTextColor || '#1F1F1F'
+                  }}
+                  className="px-3 py-1 rounded-full text-[10px] font-bold uppercase inline-flex items-center gap-1 shadow-2xs"
+                >
+                  <span>{config.linkText}</span>
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              )}
+              {config.showCloseButton && <X className="w-3.5 h-3.5 opacity-70" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {config.designVariant === 'editorial-strip' && (
+        <div
+          style={bgStyle}
+          className="w-full border py-2.5 px-4 flex items-center justify-between gap-3 shadow-xs rounded-lg"
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1 justify-center">
+            {config.showBadge && config.badgeText && (
+              <span
+                style={{
+                  backgroundColor: config.badgeBg || '#FFFFFF',
+                  color: config.badgeTextColor || '#C85A32'
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0"
+              >
+                {renderIcon(config.iconName)}
+                <span>{config.badgeText}</span>
+              </span>
+            )}
+            <p style={fontStyle} className={`${textSizeClass} truncate leading-tight`}>
+              {config.text || 'Your announcement message...'}
+            </p>
+            {config.linkText && (
+              <span className="text-[11px] font-bold underline uppercase ml-1 shrink-0">
+                {config.linkText} →
+              </span>
+            )}
+          </div>
+          {config.showCloseButton && <X className="w-3.5 h-3.5 opacity-70 shrink-0" />}
+        </div>
+      )}
+
+      {config.designVariant === 'marquee-ticker' && (
+        <div
+          style={bgStyle}
+          className="w-full border py-2 px-3 flex items-center justify-between gap-2 shadow-xs rounded-lg overflow-hidden"
+        >
+          <div className="flex items-center gap-6 whitespace-nowrap overflow-x-hidden flex-1">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center gap-3 shrink-0">
+                {config.showBadge && config.badgeText && (
+                  <span
+                    style={{
+                      backgroundColor: config.badgeBg || '#FFFFFF',
+                      color: config.badgeTextColor || '#C85A32'
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase"
+                  >
+                    {renderIcon(config.iconName)}
+                    <span>{config.badgeText}</span>
+                  </span>
+                )}
+                <span style={fontStyle} className={textSizeClass}>
+                  {config.text || 'Your announcement message...'}
+                </span>
+                {config.linkText && (
+                  <span className="font-bold underline text-[10px] uppercase">{config.linkText} →</span>
+                )}
+                <span className="opacity-40">✦</span>
+              </div>
+            ))}
+          </div>
+          {config.showCloseButton && <X className="w-3.5 h-3.5 opacity-70 shrink-0" />}
+        </div>
+      )}
+
+      {config.designVariant === 'glass-glow' && (
+        <div
+          style={bgStyle}
+          className="w-full rounded-xl border p-3 flex items-center justify-between gap-3 shadow-lg backdrop-blur-md"
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1 justify-center">
+            {config.showBadge && config.badgeText && (
+              <span
+                style={{
+                  backgroundColor: config.badgeBg || '#FFFFFF',
+                  color: config.badgeTextColor || '#C85A32'
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0"
+              >
+                {renderIcon(config.iconName)}
+                <span>{config.badgeText}</span>
+              </span>
+            )}
+            <p style={fontStyle} className={`${textSizeClass} truncate leading-tight`}>
+              {config.text || 'Your announcement message...'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {config.linkText && (
+              <span
+                style={{
+                  backgroundColor: config.btnBg || '#FFFFFF',
+                  color: config.btnTextColor || '#1F1F1F'
+                }}
+                className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase inline-flex items-center gap-1"
+              >
+                <span>{config.linkText}</span>
+                <ArrowRight className="w-3 h-3" />
+              </span>
+            )}
+            {config.showCloseButton && <X className="w-3.5 h-3.5 opacity-70" />}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const AdminPortal: React.FC = () => {
   const { 
     products, 
@@ -182,6 +563,9 @@ export const AdminPortal: React.FC = () => {
     updateOnlineDiscountPercent,
     siteBanners,
     updateSiteBanners,
+    floatingBanner,
+    updateFloatingBanner,
+    toggleFloatingBanner,
     syncFirebaseData,
     isAdminAuthenticated,
     verifyAdminPassword,
@@ -260,6 +644,11 @@ export const AdminPortal: React.FC = () => {
   const [deliveryProductSearch, setDeliveryProductSearch] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [chartYear, setChartYear] = useState('2026');
+
+  // Floating Banner Studio State
+  const [floatingBannerStudioTab, setFloatingBannerStudioTab] = useState<'content' | 'typography' | 'colors' | 'layout'>('content');
+  const [floatingBannerPreviewViewport, setFloatingBannerPreviewViewport] = useState<'desktop' | 'mobile'>('desktop');
+  const [floatingBannerSaved, setFloatingBannerSaved] = useState(false);
 
   // Auto-close sidebar on mobile view navigation
   const handleTabSelect = (tab: AdminTab) => {
@@ -5916,23 +6305,697 @@ export const AdminPortal: React.FC = () => {
           {/* TAB 8: BANNERS & SITE ANNOUNCEMENTS (settings/home_banner)*/}
           {/* ========================================================= */}
           {activeTab === 'banners' && (
-            <div className="bg-white border border-[#E6E8EC] rounded-xl shadow-xs p-6 space-y-6 animate-fadeIn">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#F0ECE1] pb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-[#1F1F1F]">Brand Banners & Announcement Settings</h2>
-                  <p className="text-xs text-[#8C92A0]">Synced in real-time across all visitors via Firestore (settings/home_banner) & Cloudinary</p>
+            <div className="space-y-8 animate-fadeIn">
+              {/* ------------------------------------------------------------- */}
+              {/* 1. FLOATING ANNOUNCEMENT BANNER STUDIO (Real-Time Synced)     */}
+              {/* ------------------------------------------------------------- */}
+              <div className="bg-white border border-[#E6E8EC] rounded-2xl shadow-sm overflow-hidden">
+                {/* Studio Header */}
+                <div className="bg-gradient-to-r from-[#FAF9F6] via-white to-[#FAF9F6] border-b border-[#F0ECE1] p-6">
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-[#C85A32]/10 text-[#C85A32]">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <h2 className="text-xl font-bold text-[#1F1F1F]">Floating Announcement Banner Studio</h2>
+                            {floatingBanner?.enabled ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                </span>
+                                LIVE ON STOREFRONT (ABOVE HERO)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide bg-neutral-100 text-neutral-600 border border-neutral-200">
+                                <span className="h-2 w-2 rounded-full bg-neutral-400" />
+                                INACTIVE / HIDDEN
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#8C92A0]">
+                            Positioned directly above the Hero banner. Fully customizable with fonts, text, colors, layouts, and real-time Firestore sync (<code className="bg-[#FAF9F6] px-1 py-0.5 rounded text-[11px]">settings/floating_banner</code>).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Master ON/OFF Switch & Broadcast Sync Button */}
+                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                      {/* Master Toggle Switch */}
+                      <button
+                        type="button"
+                        id="floating-banner-master-toggle"
+                        onClick={toggleFloatingBanner}
+                        className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer shadow-xs border ${
+                          floatingBanner?.enabled
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-emerald-600/20'
+                            : 'bg-neutral-100 hover:bg-neutral-200 text-neutral-700 border-neutral-300'
+                        }`}
+                      >
+                        <span className={`w-3 h-3 rounded-full ${floatingBanner?.enabled ? 'bg-white animate-pulse' : 'bg-neutral-400'}`} />
+                        <span>{floatingBanner?.enabled ? 'Banner is ON (Click to Turn OFF)' : 'Banner is OFF (Click to Turn ON)'}</span>
+                      </button>
+
+                      {/* Manual Broadcast to Firestore Button */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setFloatingBannerSaved(true);
+                          await updateFloatingBanner(floatingBanner);
+                          showToast('Floating Banner Broadcasted', 'success', 'Pushed in real-time to all visitor sessions across devices.');
+                          setTimeout(() => setFloatingBannerSaved(false), 2500);
+                        }}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[#1F1F1F] hover:bg-[#C85A32] text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0"
+                      >
+                        {floatingBannerSaved ? (
+                          <>
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>Broadcasted!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Sync to All Devices</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => updateSiteBanners(siteBanners)}
-                  className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Sync to Firestore Now</span>
-                </button>
+
+                {/* Studio Live Preview Canvas */}
+                <div className="p-6 bg-[#FAF9F6] border-b border-[#F0ECE1]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-[#C85A32]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#1F1F1F]">
+                        Live Interactive Visitor Preview
+                      </span>
+                      <span className="text-[11px] text-[#8C92A0]">
+                        ({floatingBanner?.displayScope === 'home_only' ? 'Above Hero on Home Page' : 'All Storefront Pages'})
+                      </span>
+                    </div>
+
+                    {/* Viewport Width Switcher */}
+                    <div className="flex items-center gap-1 bg-white border border-[#EAE6DE] rounded-lg p-1">
+                      <button
+                        type="button"
+                        onClick={() => setFloatingBannerPreviewViewport('desktop')}
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                          floatingBannerPreviewViewport === 'desktop'
+                            ? 'bg-[#1F1F1F] text-white'
+                            : 'text-[#6B7280] hover:text-[#1F1F1F]'
+                        }`}
+                      >
+                        Desktop View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFloatingBannerPreviewViewport('mobile')}
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors cursor-pointer ${
+                          floatingBannerPreviewViewport === 'mobile'
+                            ? 'bg-[#1F1F1F] text-white'
+                            : 'text-[#6B7280] hover:text-[#1F1F1F]'
+                        }`}
+                      >
+                        Mobile View
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Canvas Container */}
+                  <div className="w-full flex justify-center">
+                    <div
+                      className={`w-full transition-all duration-300 ${
+                        floatingBannerPreviewViewport === 'mobile' ? 'max-w-md' : 'max-w-5xl'
+                      }`}
+                    >
+                      <div className="relative rounded-2xl bg-[#EAE6DE]/30 border border-[#EAE6DE] p-4 sm:p-6 overflow-hidden">
+                        {/* Simulation Header Accent */}
+                        <div className="text-[10px] uppercase font-bold tracking-widest text-[#8C92A0] mb-2 flex items-center justify-between">
+                          <span>↑ DIVACHIC HEADER NAVIGATION</span>
+                          <span>REAL-TIME STOREFRONT LAYER</span>
+                        </div>
+
+                        {/* LIVE PREVIEW COMPONENT EMBED */}
+                        <div className="py-2">
+                          <FloatingBannerPreviewBox config={floatingBanner} />
+                        </div>
+
+                        {/* Simulation Hero Edge */}
+                        <div className="mt-3 pt-3 border-t border-dashed border-[#D5D0C5] text-center">
+                          <span className="text-[10px] font-semibold tracking-wider text-[#C85A32] uppercase">
+                            ↓ HERO SECTION (AUTUMN / WINTER DROP RUNWAY) STARTS HERE
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 1-Click Luxury Palette Presets */}
+                <div className="p-6 border-b border-[#F0ECE1] bg-white">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Palette className="w-4 h-4 text-[#C85A32]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#1F1F1F]">
+                        1-Click Luxury Color & Style Presets
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[#8C92A0]">Instant high-fashion color themes</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    {FLOATING_BANNER_PRESETS.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => {
+                          updateFloatingBanner({
+                            bgStyle: preset.bgStyle,
+                            bgColor: preset.bgColor,
+                            bgGradientEnd: preset.bgGradientEnd,
+                            textColor: preset.textColor,
+                            badgeBg: preset.badgeBg,
+                            badgeTextColor: preset.badgeTextColor,
+                            btnBg: preset.btnBg,
+                            btnTextColor: preset.btnTextColor,
+                            borderColor: preset.borderColor
+                          });
+                          showToast(`Applied ${preset.name}`, 'info', preset.desc);
+                        }}
+                        className="group p-2.5 rounded-xl border border-[#EAE6DE] hover:border-[#C85A32] bg-[#FAF9F6] hover:bg-white text-left transition-all duration-200 hover:shadow-xs cursor-pointer"
+                      >
+                        <div
+                          className="w-full h-8 rounded-lg mb-2 shadow-2xs border border-black/10 flex items-center justify-center text-[10px] font-bold"
+                          style={{
+                            background:
+                              preset.bgStyle === 'gradient'
+                                ? `linear-gradient(135deg, ${preset.bgColor}, ${preset.bgGradientEnd})`
+                                : preset.bgColor,
+                            color: preset.textColor
+                          }}
+                        >
+                          ✦ PREVIEW
+                        </div>
+                        <p className="text-[11px] font-bold text-[#1F1F1F] truncate group-hover:text-[#C85A32]">{preset.name}</p>
+                        <p className="text-[9px] text-[#8C92A0] truncate">{preset.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Studio Controls Tabs Navigation */}
+                <div className="px-6 pt-4 border-b border-[#F0ECE1] bg-[#FAF9F6]">
+                  <div className="flex gap-2 overflow-x-auto pb-3">
+                    {[
+                      { id: 'content', label: '1. Text & Content', icon: Tag },
+                      { id: 'typography', label: '2. Typography & Fonts', icon: Type },
+                      { id: 'colors', label: '3. Colors & Styling', icon: Palette },
+                      { id: 'layout', label: '4. Layout & Effects', icon: Sliders }
+                    ].map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = floatingBannerStudioTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setFloatingBannerStudioTab(tab.id as any)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer shrink-0 ${
+                            isActive
+                              ? 'bg-[#1F1F1F] text-white shadow-xs'
+                              : 'bg-white border border-[#EAE6DE] text-[#6B7280] hover:text-[#1F1F1F] hover:border-[#D5D0C5]'
+                          }`}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Studio Control Form Panels */}
+                <div className="p-6 bg-white space-y-6">
+                  {/* TAB 1: CONTENT & COPY */}
+                  {floatingBannerStudioTab === 'content' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Main Text */}
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-xs font-bold text-[#1F1F1F] block">
+                          Main Announcement Headline / Message <span className="text-[#C85A32]">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={floatingBanner?.text || ''}
+                          onChange={(e) => updateFloatingBanner({ text: e.target.value })}
+                          placeholder="e.g. Complimentary Express Worldwide Shipping on Orders Over ₹2,999"
+                          className="w-full p-3 bg-white border border-[#D5D0C5] focus:border-[#C85A32] rounded-xl text-xs font-medium outline-none transition-colors"
+                        />
+                      </div>
+
+                      {/* Badge Text & Show Badge */}
+                      <div className="space-y-2 p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-[#1F1F1F]">Eyebrow Badge Label</label>
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={floatingBanner?.showBadge ?? true}
+                              onChange={(e) => updateFloatingBanner({ showBadge: e.target.checked })}
+                              className="rounded accent-[#C85A32]"
+                            />
+                            <span>Show Badge</span>
+                          </label>
+                        </div>
+                        <input
+                          type="text"
+                          value={floatingBanner?.badgeText || ''}
+                          onChange={(e) => updateFloatingBanner({ badgeText: e.target.value })}
+                          placeholder="e.g. AUTUMN DROP / FLASH SALE"
+                          className="w-full p-2.5 bg-white border border-[#D5D0C5] rounded-lg text-xs"
+                        />
+                      </div>
+
+                      {/* CTA Button Label & Link */}
+                      <div className="space-y-2 p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl">
+                        <label className="text-xs font-bold text-[#1F1F1F] block">CTA Button Label & Destination</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={floatingBanner?.linkText || ''}
+                            onChange={(e) => updateFloatingBanner({ linkText: e.target.value })}
+                            placeholder="e.g. SHOP NOW"
+                            className="w-full p-2.5 bg-white border border-[#D5D0C5] rounded-lg text-xs"
+                          />
+                          <input
+                            type="text"
+                            value={floatingBanner?.linkUrl || ''}
+                            onChange={(e) => updateFloatingBanner({ linkUrl: e.target.value })}
+                            placeholder="e.g. /shop or #catalog"
+                            className="w-full p-2.5 bg-white border border-[#D5D0C5] rounded-lg text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Icon Selector */}
+                      <div className="space-y-2 p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl">
+                        <label className="text-xs font-bold text-[#1F1F1F] block">Accent Icon</label>
+                        <select
+                          value={floatingBanner?.iconName || 'sparkles'}
+                          onChange={(e) => updateFloatingBanner({ iconName: e.target.value as any })}
+                          className="w-full p-2.5 bg-white border border-[#D5D0C5] rounded-lg text-xs font-medium outline-none cursor-pointer"
+                        >
+                          {ICON_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Close Button / Dismissible */}
+                      <div className="space-y-2 p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl flex items-center justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-[#1F1F1F] block">Allow Visitor Dismissal ('X')</label>
+                          <p className="text-[11px] text-[#8C92A0]">Shows an 'X' button to let visitors hide the banner for their browsing session</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={floatingBanner?.showCloseButton ?? true}
+                          onChange={(e) => updateFloatingBanner({ showCloseButton: e.target.checked })}
+                          className="w-4 h-4 accent-[#C85A32] rounded cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: TYPOGRAPHY & FONTS */}
+                  {floatingBannerStudioTab === 'typography' && (
+                    <div className="space-y-6">
+                      {/* Font Family Selection Grid */}
+                      <div className="space-y-3">
+                        <label className="text-xs font-bold text-[#1F1F1F] block">
+                          Curated Google Fonts for Announcement Headline
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                          {FONT_OPTIONS.map((font) => {
+                            const isSelected = floatingBanner?.fontFamily === font.id;
+                            return (
+                              <button
+                                key={font.id}
+                                type="button"
+                                onClick={() => updateFloatingBanner({ fontFamily: font.id })}
+                                className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-[#1F1F1F] text-white border-[#1F1F1F] shadow-sm'
+                                    : 'bg-[#FAF9F6] hover:bg-white text-[#1F1F1F] border-[#EAE6DE] hover:border-[#C85A32]'
+                                }`}
+                              >
+                                <p
+                                  style={{ fontFamily: `'${font.id}', sans-serif` }}
+                                  className="text-sm font-semibold truncate leading-tight mb-1"
+                                >
+                                  {font.name}
+                                </p>
+                                <p className={`text-[10px] ${isSelected ? 'text-white/70' : 'text-[#8C92A0]'}`}>
+                                  {font.style}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Font Size, Weight, Letter Spacing & Transform */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+                        {/* Font Size */}
+                        <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl space-y-2">
+                          <label className="text-xs font-bold text-[#1F1F1F] block">Font Size</label>
+                          <div className="grid grid-cols-4 gap-1">
+                            {[
+                              { id: 'xs', label: 'XS (11px)' },
+                              { id: 'sm', label: 'SM (12px)' },
+                              { id: 'base', label: 'MD (14px)' },
+                              { id: 'lg', label: 'LG (16px)' }
+                            ].map((sz) => (
+                              <button
+                                key={sz.id}
+                                type="button"
+                                onClick={() => updateFloatingBanner({ fontSize: sz.id as any })}
+                                className={`py-1.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                                  floatingBanner?.fontSize === sz.id
+                                    ? 'bg-[#1F1F1F] text-white'
+                                    : 'bg-white border border-[#D5D0C5] text-[#1F1F1F] hover:bg-neutral-100'
+                                }`}
+                              >
+                                {sz.id.toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Font Weight */}
+                        <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl space-y-2">
+                          <label className="text-xs font-bold text-[#1F1F1F] block">Font Weight</label>
+                          <div className="grid grid-cols-4 gap-1">
+                            {[
+                              { id: '400', label: '400' },
+                              { id: '500', label: '500' },
+                              { id: '600', label: '600' },
+                              { id: '700', label: '700' }
+                            ].map((wt) => (
+                              <button
+                                key={wt.id}
+                                type="button"
+                                onClick={() => updateFloatingBanner({ fontWeight: wt.id as any })}
+                                className={`py-1.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                                  floatingBanner?.fontWeight === wt.id
+                                    ? 'bg-[#1F1F1F] text-white'
+                                    : 'bg-white border border-[#D5D0C5] text-[#1F1F1F] hover:bg-neutral-100'
+                                }`}
+                              >
+                                {wt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Letter Spacing */}
+                        <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl space-y-2">
+                          <label className="text-xs font-bold text-[#1F1F1F] block">Letter Spacing (Tracking)</label>
+                          <div className="grid grid-cols-4 gap-1">
+                            {[
+                              { id: 'normal', label: 'Def' },
+                              { id: 'wide', label: 'Wide' },
+                              { id: 'wider', label: 'Wider' },
+                              { id: 'widest', label: 'Max' }
+                            ].map((ls) => (
+                              <button
+                                key={ls.id}
+                                type="button"
+                                onClick={() => updateFloatingBanner({ letterSpacing: ls.id as any })}
+                                className={`py-1.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                                  floatingBanner?.letterSpacing === ls.id
+                                    ? 'bg-[#1F1F1F] text-white'
+                                    : 'bg-white border border-[#D5D0C5] text-[#1F1F1F] hover:bg-neutral-100'
+                                }`}
+                              >
+                                {ls.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Text Transform */}
+                        <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl space-y-2">
+                          <label className="text-xs font-bold text-[#1F1F1F] block">Text Transform</label>
+                          <div className="grid grid-cols-3 gap-1">
+                            {[
+                              { id: 'uppercase', label: 'UPPER' },
+                              { id: 'capitalize', label: 'Title' },
+                              { id: 'none', label: 'None' }
+                            ].map((tt) => (
+                              <button
+                                key={tt.id}
+                                type="button"
+                                onClick={() => updateFloatingBanner({ textTransform: tt.id as any })}
+                                className={`py-1.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                                  floatingBanner?.textTransform === tt.id
+                                    ? 'bg-[#1F1F1F] text-white'
+                                    : 'bg-white border border-[#D5D0C5] text-[#1F1F1F] hover:bg-neutral-100'
+                                }`}
+                              >
+                                {tt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: COLORS & STYLING */}
+                  {floatingBannerStudioTab === 'colors' && (
+                    <div className="space-y-6">
+                      {/* Background Style Selector */}
+                      <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl space-y-2">
+                        <label className="text-xs font-bold text-[#1F1F1F] block">Background Render Style</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { id: 'gradient', label: 'Linear Gradient', desc: 'Smooth two-color radiant transition' },
+                            { id: 'solid', label: 'Solid Color', desc: 'Flat bold unified background hue' },
+                            { id: 'glass', label: 'Frosted Glass', desc: 'Translucent backdrop-blur frosted glass' }
+                          ].map((st) => (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() => updateFloatingBanner({ bgStyle: st.id as any })}
+                              className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                                floatingBanner?.bgStyle === st.id
+                                  ? 'bg-[#1F1F1F] text-white border-[#1F1F1F] shadow-xs'
+                                  : 'bg-white hover:bg-neutral-50 border-[#D5D0C5] text-[#1F1F1F]'
+                              }`}
+                            >
+                              <p className="text-xs font-bold">{st.label}</p>
+                              <p className={`text-[10px] ${floatingBanner?.bgStyle === st.id ? 'text-white/70' : 'text-[#8C92A0]'}`}>
+                                {st.desc}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Color Pickers Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Primary BG Color */}
+                        <ColorPickerInput
+                          label="Primary Background Color"
+                          value={floatingBanner?.bgColor || '#C85A32'}
+                          onChange={(val) => updateFloatingBanner({ bgColor: val })}
+                        />
+
+                        {/* Gradient End Color (if gradient) */}
+                        {floatingBanner?.bgStyle === 'gradient' ? (
+                          <ColorPickerInput
+                            label="Gradient End Color"
+                            value={floatingBanner?.bgGradientEnd || '#8E381A'}
+                            onChange={(val) => updateFloatingBanner({ bgGradientEnd: val })}
+                          />
+                        ) : (
+                          <ColorPickerInput
+                            label="Border Outline Color"
+                            value={floatingBanner?.borderColor || 'rgba(255, 255, 255, 0.25)'}
+                            onChange={(val) => updateFloatingBanner({ borderColor: val })}
+                          />
+                        )}
+
+                        {/* Text Color */}
+                        <ColorPickerInput
+                          label="Headline Text Color"
+                          value={floatingBanner?.textColor || '#FFFFFF'}
+                          onChange={(val) => updateFloatingBanner({ textColor: val })}
+                        />
+
+                        {/* Border Color (when in gradient mode) */}
+                        {floatingBanner?.bgStyle === 'gradient' && (
+                          <ColorPickerInput
+                            label="Border Outline Color"
+                            value={floatingBanner?.borderColor || 'rgba(255, 255, 255, 0.25)'}
+                            onChange={(val) => updateFloatingBanner({ borderColor: val })}
+                          />
+                        )}
+
+                        {/* Badge Background */}
+                        <ColorPickerInput
+                          label="Badge Background Color"
+                          value={floatingBanner?.badgeBg || '#FFFFFF'}
+                          onChange={(val) => updateFloatingBanner({ badgeBg: val })}
+                        />
+
+                        {/* Badge Text Color */}
+                        <ColorPickerInput
+                          label="Badge Text Color"
+                          value={floatingBanner?.badgeTextColor || '#C85A32'}
+                          onChange={(val) => updateFloatingBanner({ badgeTextColor: val })}
+                        />
+
+                        {/* Button Background */}
+                        <ColorPickerInput
+                          label="Button Background Color"
+                          value={floatingBanner?.btnBg || '#FFFFFF'}
+                          onChange={(val) => updateFloatingBanner({ btnBg: val })}
+                        />
+
+                        {/* Button Text Color */}
+                        <ColorPickerInput
+                          label="Button Text Color"
+                          value={floatingBanner?.btnTextColor || '#1F1F1F'}
+                          onChange={(val) => updateFloatingBanner({ btnTextColor: val })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 4: LAYOUT & EFFECTS */}
+                  {floatingBannerStudioTab === 'layout' && (
+                    <div className="space-y-6">
+                      {/* Design Variant Cards */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-[#1F1F1F] block">Banner Layout & Design Anatomy</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                          {VARIANT_OPTIONS.map((variant) => {
+                            const isSelected = floatingBanner?.designVariant === variant.id;
+                            return (
+                              <button
+                                key={variant.id}
+                                type="button"
+                                onClick={() => updateFloatingBanner({ designVariant: variant.id })}
+                                className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'bg-[#1F1F1F] text-white border-[#1F1F1F] shadow-sm'
+                                    : 'bg-[#FAF9F6] hover:bg-white text-[#1F1F1F] border-[#EAE6DE] hover:border-[#C85A32]'
+                                }`}
+                              >
+                                <span className="text-xl mb-2 block">{variant.icon}</span>
+                                <p className="text-xs font-bold leading-tight mb-1">{variant.label}</p>
+                                <p className={`text-[10px] ${isSelected ? 'text-white/70' : 'text-[#8C92A0]'}`}>
+                                  {variant.desc}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Toggles: Pulse, Glow, Scope */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                        {/* Pulse Badge */}
+                        <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl flex items-center justify-between">
+                          <div>
+                            <label className="text-xs font-bold text-[#1F1F1F] block">Pulsing Live Radar Dot</label>
+                            <p className="text-[11px] text-[#8C92A0]">Animated radar ping effect on badge</p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={floatingBanner?.pulseBadge ?? true}
+                            onChange={(e) => updateFloatingBanner({ pulseBadge: e.target.checked })}
+                            className="w-4 h-4 accent-[#C85A32] rounded cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Ambient Glow */}
+                        <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl flex items-center justify-between">
+                          <div>
+                            <label className="text-xs font-bold text-[#1F1F1F] block">Ambient Glow Halo</label>
+                            <p className="text-[11px] text-[#8C92A0]">Soft illuminated radial blur aura</p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={floatingBanner?.glowEffect ?? true}
+                            onChange={(e) => updateFloatingBanner({ glowEffect: e.target.checked })}
+                            className="w-4 h-4 accent-[#C85A32] rounded cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Display Scope */}
+                        <div className="p-4 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xl space-y-2">
+                          <label className="text-xs font-bold text-[#1F1F1F] block">Storefront Display Scope</label>
+                          <div className="grid grid-cols-2 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => updateFloatingBanner({ displayScope: 'home_only' })}
+                              className={`py-1.5 px-2 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                                floatingBanner?.displayScope === 'home_only'
+                                  ? 'bg-[#1F1F1F] text-white'
+                                  : 'bg-white border border-[#D5D0C5] text-[#1F1F1F]'
+                              }`}
+                            >
+                              Home Above Hero
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateFloatingBanner({ displayScope: 'all_pages' })}
+                              className={`py-1.5 px-2 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                                floatingBanner?.displayScope === 'all_pages'
+                                  ? 'bg-[#1F1F1F] text-white'
+                                  : 'bg-white border border-[#D5D0C5] text-[#1F1F1F]'
+                              }`}
+                            >
+                              All Pages
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ------------------------------------------------------------- */}
+              {/* 2. BRAND BANNERS & RUNWAY MEDIA (settings/home_banner)        */}
+              {/* ------------------------------------------------------------- */}
+              <div className="bg-white border border-[#E6E8EC] rounded-xl shadow-xs p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#F0ECE1] pb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-[#1F1F1F]">Brand Banners & Media Settings</h2>
+                    <p className="text-xs text-[#8C92A0]">Synced in real-time across all visitors via Firestore (settings/home_banner) & Cloudinary</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => updateSiteBanners(siteBanners)}
+                    className="bg-[#8B5CF6] hover:bg-[#7C3AED] text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Sync Media to Firestore</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Brand Logo */}
                 <div className="p-5 border border-[#EAE6DE] rounded-xl space-y-3 bg-[#FAF9F6]">
                   <div className="flex justify-between items-center">
@@ -6078,7 +7141,8 @@ export const AdminPortal: React.FC = () => {
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* ========================================================= */}
           {/* TAB: REVIEWS & TESTIMONIALS (Firestore 'reviews')         */}

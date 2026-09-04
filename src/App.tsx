@@ -27,10 +27,11 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { ScrollToTop } from './components/common/ScrollToTop';
 import { WhatsAppSupportWidget } from './components/common/WhatsAppSupportWidget';
 import { SearchModal } from './components/common/SearchModal';
+import { FloatingBanner } from './components/common/FloatingBanner';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const MainContent: React.FC = () => {
-  const { activePage } = useStore();
+  const { activePage, floatingBanner } = useStore();
 
   // Automatically track route & page views via native Firebase Analytics
   useEffect(() => {
@@ -39,6 +40,11 @@ const MainContent: React.FC = () => {
 
   return (
     <main className="flex-1 pb-16 md:pb-0 relative overflow-hidden">
+      {/* If configured for all pages, display banner above other storefront views */}
+      {activePage !== 'admin' && activePage !== 'home' && floatingBanner?.displayScope === 'all_pages' && (
+        <FloatingBanner />
+      )}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={activePage}
@@ -50,6 +56,7 @@ const MainContent: React.FC = () => {
         >
           {activePage === 'home' && (
             <>
+              <FloatingBanner />
               <HeroBanner />
               <CategoryGrid />
               <ProductGrids />

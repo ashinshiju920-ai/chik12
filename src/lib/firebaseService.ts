@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { uploadToCloudinary } from './cloudinary';
-import { Product, Order, Review, StoreCategory } from '../types';
+import { Product, Order, Review, StoreCategory, FloatingBannerConfig } from '../types';
 
 export interface FirestoreReview {
   id: string;
@@ -42,6 +42,7 @@ export interface HomeBannerSettings {
   editorialImage?: string;
   editorialTitle?: string;
   editorialSubtitle?: string;
+  floatingBanner?: FloatingBannerConfig;
   updatedAt?: any;
 }
 
@@ -195,6 +196,63 @@ export async function saveHomeBannerToFirestore(bannerData: HomeBannerSettings):
     }, { merge: true });
   } catch (error) {
     console.error('Error saving home banner to Firestore:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subscribes in real-time to floating announcement banner settings from Firestore doc 'settings/floating_banner'.
+ */
+export function subscribeToFloatingBanner(
+  onUpdate: (banner: FloatingBannerConfig) => void
+): () => void {
+  try {
+    const bannerDocRef = doc(db, 'settings', 'floating_banner');
+    return onSnapshot(
+      bannerDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          onUpdate(data as FloatingBannerConfig);
+        }
+      },
+      (err) => console.warn('Firestore floating_banner onSnapshot warning:', err)
+    );
+  } catch (error) {
+    console.warn('subscribeToFloatingBanner failed to initialize:', error);
+    return () => {};
+  }
+}
+
+/**
+ * Saves floating banner settings in real-time to Firestore doc 'settings/floating_banner'
+ * and mirrors to 'settings/home_banner' for cross-system synchronization.
+ */
+export async function saveFloatingBannerToFirestore(bannerConfig: FloatingBannerConfig): Promise<void> {
+  try {
+    const bannerDocRef = doc(db, 'settings', 'floating_banner');
+    const homeBannerRef = doc(db, 'settings', 'home_banner');
+
+    await Promise.all([
+      setDoc(
+        bannerDocRef,
+        {
+          ...bannerConfig,
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      ),
+      setDoc(
+        homeBannerRef,
+        {
+          floatingBanner: bannerConfig,
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      )
+    ]);
+  } catch (error) {
+    console.error('Error saving floating banner to Firestore:', error);
     throw error;
   }
 }
