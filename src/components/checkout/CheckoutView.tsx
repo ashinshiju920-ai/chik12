@@ -6,6 +6,7 @@ import { db } from '../../firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { load } from '@cashfreepayments/cashfree-js';
 import { motion } from 'framer-motion';
+import { sendOrderConfirmationEmail } from '../../lib/emailService';
 import {
   ShieldCheck,
   Truck,
@@ -314,6 +315,20 @@ export const CheckoutView: React.FC = () => {
       clearCart();
       syncFormToGoogleSheetsExcel();
 
+      // Asynchronously trigger automated order confirmation email via Google Apps Script Webhook
+      sendOrderConfirmationEmail({
+        customerEmail: customerDetails.email,
+        customerName: customerDetails.fullName,
+        orderId,
+        totalAmount: finalPayable,
+        paymentMethod: 'Cash on Delivery (COD)',
+        items: cartItems.map((item) => ({
+          title: item.title,
+          quantity: item.quantity,
+          price: item.price
+        }))
+      });
+
       showToast('Order Placed Successfully', 'success', `Cash on Delivery Order #${orderId} has been confirmed.`);
       setActivePage('order-confirmation');
     } catch (err: any) {
@@ -486,6 +501,20 @@ export const CheckoutView: React.FC = () => {
       setCurrentOrder(onlineOrderDoc as any);
       clearCart();
       syncFormToGoogleSheetsExcel();
+
+      // Asynchronously trigger automated order confirmation email via Google Apps Script Webhook
+      sendOrderConfirmationEmail({
+        customerEmail: customerDetails.email,
+        customerName: customerDetails.fullName,
+        orderId,
+        totalAmount: finalPayable,
+        paymentMethod: 'Online (Cashfree)',
+        items: cartItems.map((item) => ({
+          title: item.title,
+          quantity: item.quantity,
+          price: item.price
+        }))
+      });
 
       showToast('Payment Verified', 'success', `Order #${orderId} successfully completed!`);
       setActivePage('order-confirmation');
