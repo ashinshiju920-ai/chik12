@@ -65,7 +65,7 @@ export const EditorialBanners: React.FC = () => {
 
       {/* 2. Trending Eyewear Banner (Page 7) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white border border-[#EBE8E2] rounded-xs overflow-hidden grid grid-cols-1 md:grid-cols-12 shadow-xs">
+        <div className="bg-white dark:bg-[#161616] border border-[#EBE8E2] dark:border-[#282828] rounded-xs overflow-hidden grid grid-cols-1 md:grid-cols-12 shadow-xs">
           
           <div className="md:col-span-6 relative min-h-[340px]">
             <img
@@ -76,19 +76,19 @@ export const EditorialBanners: React.FC = () => {
             />
           </div>
 
-          <div className="md:col-span-6 flex flex-col justify-center items-center text-center p-8 sm:p-14 bg-[#FAF9F6]">
-            <span className="font-sans text-[11px] font-semibold text-[#C85A32] uppercase tracking-[0.22em] mb-2">
+          <div className="md:col-span-6 flex flex-col justify-center items-center text-center p-8 sm:p-14 bg-[#FAF9F6] dark:bg-[#161616]">
+            <span className="font-sans text-[11px] font-semibold text-[#C85A32] dark:text-[#E87A54] uppercase tracking-[0.22em] mb-2">
               #glasses #optics
             </span>
-            <h2 className="text-3xl sm:text-4xl font-serif font-medium text-[#1F1F1F] tracking-tight mb-3">
+            <h2 className="text-3xl sm:text-4xl font-serif font-medium text-[#1A1918] dark:text-[#F5F3EF] tracking-tight mb-3 antialiased">
               {eyewearTitle}
             </h2>
-            <p className="font-sans text-sm text-[#736B5E] max-w-md mb-6 leading-relaxed font-normal">
+            <p className="font-sans text-sm text-[#6E685F] dark:text-[#A8A29E] max-w-md mb-6 leading-relaxed font-normal">
               {eyewearSubtitle}
             </p>
             <button
               onClick={handleEyewearClick}
-              className="underline font-sans font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] transition-colors cursor-pointer uppercase tracking-[0.18em]"
+              className="underline font-sans font-semibold text-xs text-[#1A1918] dark:text-[#EAE6DE] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors cursor-pointer uppercase tracking-[0.18em]"
             >
               View Collection
             </button>
@@ -102,8 +102,8 @@ export const EditorialBanners: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
           {/* Tile A: Weekend Collective */}
-          <div className="bg-white border border-[#EBE8E2] rounded-xs overflow-hidden flex flex-col group">
-            <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F3EF]">
+          <div className="bg-white dark:bg-[#161616] border border-[#EBE8E2] dark:border-[#282828] rounded-xs overflow-hidden flex flex-col group">
+            <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F3EF] dark:bg-[#1E1E1E]">
               <img
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop"
                 alt="Weekend Collective"
@@ -112,15 +112,15 @@ export const EditorialBanners: React.FC = () => {
               />
             </div>
             <div className="p-8 text-center flex-1 flex flex-col justify-center items-center">
-              <h3 className="text-2xl font-serif font-medium text-[#1F1F1F] tracking-tight mb-2">
+              <h3 className="text-2xl font-serif font-medium text-[#1A1918] dark:text-[#F5F3EF] tracking-tight mb-2 antialiased">
                 Weekend Collective
               </h3>
-              <p className="font-sans text-xs text-[#7A7264] max-w-sm mb-4 leading-relaxed font-normal">
+              <p className="font-sans text-xs text-[#6E685F] dark:text-[#A8A29E] max-w-sm mb-4 leading-relaxed font-normal">
                 Largest collection of genuine quality prescription glasses frames & casual loungewear.
               </p>
               <button
                 onClick={handleApparelClick}
-                className="underline font-sans font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] tracking-[0.18em] uppercase cursor-pointer"
+                className="underline font-sans font-semibold text-xs text-[#1A1918] dark:text-[#EAE6DE] hover:text-[#C85A32] dark:hover:text-[#E87A54] tracking-[0.18em] uppercase cursor-pointer"
               >
                 Shop Now
               </button>
@@ -128,8 +128,8 @@ export const EditorialBanners: React.FC = () => {
           </div>
 
           {/* Tile B: It's Cold Outside */}
-          <div className="bg-white border border-[#EBE8E2] rounded-xs overflow-hidden flex flex-col group">
-            <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F3EF]">
+          <div className="bg-white dark:bg-[#161616] border border-[#EBE8E2] dark:border-[#282828] rounded-xs overflow-hidden flex flex-col group">
+            <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F3EF] dark:bg-[#1E1E1E]">
               <img
                 src="https://images.unsplash.com/photo-1544923246-77307dd654cb?q=80&w=1000&auto=format&fit=crop"
                 alt="It's Cold Outside Winter Puffer"
@@ -138,15 +138,15 @@ export const EditorialBanners: React.FC = () => {
               />
             </div>
             <div className="p-8 text-center flex-1 flex flex-col justify-center items-center">
-              <h3 className="text-2xl font-serif font-medium text-[#1F1F1F] tracking-tight mb-2">
+              <h3 className="text-2xl font-serif font-medium text-[#1A1918] dark:text-[#F5F3EF] tracking-tight mb-2 antialiased">
                 It’s Cold Outside
               </h3>
-              <p className="font-sans text-xs text-[#7A7264] max-w-sm mb-4 leading-relaxed font-normal">
+              <p className="font-sans text-xs text-[#6E685F] dark:text-[#A8A29E] max-w-sm mb-4 leading-relaxed font-normal">
                 Curated collection of our favorite holiday style, warm merino knits, and marigold puffers.
               </p>
               <button
                 onClick={handleApparelClick}
-                className="underline font-sans font-semibold text-xs text-[#1F1F1F] hover:text-[#C85A32] tracking-[0.18em] uppercase cursor-pointer"
+                className="underline font-sans font-semibold text-xs text-[#1A1918] dark:text-[#EAE6DE] hover:text-[#C85A32] dark:hover:text-[#E87A54] tracking-[0.18em] uppercase cursor-pointer"
               >
                 Check It Out
               </button>

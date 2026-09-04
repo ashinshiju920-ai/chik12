@@ -12,7 +12,8 @@ import {
   Sparkles,
   ArrowRight,
   Sun,
-  Moon
+  Moon,
+  Globe
 } from 'lucide-react';
 import { Currency } from '../../types';
 
@@ -115,69 +116,69 @@ export const Header: React.FC = () => {
               </button>
 
               {shopDropdownOpen && (
-                <div className="absolute top-full left-0 w-80 bg-white border border-[#EAE6DE] shadow-2xl py-3 px-2 z-50 rounded-xs animate-fadeIn">
-                  <div className="px-3 py-1.5 text-[10px] font-bold text-[#8C8275] uppercase tracking-widest border-b border-[#F0ECE1] mb-2">
+                <div className="absolute top-full left-0 w-80 bg-white dark:bg-[#161616] border border-[#EAE6DE] dark:border-[#282828] shadow-2xl py-3 px-2 z-50 rounded-xs animate-fadeIn">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-[#8C8275] dark:text-[#A8A29E] uppercase tracking-widest border-b border-[#F0ECE1] dark:border-[#282828] mb-2">
                     Department Directory
                   </div>
                   
                   <button
                     onClick={() => navigateTo('shop', 'all')}
-                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors flex items-center justify-between group/item"
+                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors flex items-center justify-between group/item"
                   >
                     <div>
-                      <div className="font-semibold text-[#1F1F1F] group-hover/item:text-[#C85A32]">All Collections</div>
-                      <div className="text-[11px] text-[#8C8477]">Complete seasonal catalog ({products.length} items)</div>
+                      <div className="font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] group-hover/item:text-[#C85A32] dark:group-hover/item:text-[#E87A54]">All Collections</div>
+                      <div className="text-[11px] text-[#8C8477] dark:text-[#A8A29E]">Complete seasonal catalog ({products.length} items)</div>
                     </div>
-                    <ArrowRight className="w-3.5 h-3.5 text-[#C85A32] opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-0.5 transition-all" />
+                    <ArrowRight className="w-3.5 h-3.5 text-[#C85A32] dark:text-[#E87A54] opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-0.5 transition-all" />
                   </button>
 
                   <button
                     onClick={() => navigateTo('shop', 'backpack')}
-                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors flex items-center justify-between group/item"
+                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors flex items-center justify-between group/item"
                   >
                     <div>
-                      <div className="font-semibold text-[#1F1F1F] group-hover/item:text-[#C85A32]">Backpacks & Leather Goods</div>
-                      <div className="text-[11px] text-[#8C8477]">Waxed canvas & waterproof carryalls</div>
+                      <div className="font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] group-hover/item:text-[#C85A32] dark:group-hover/item:text-[#E87A54]">Backpacks & Leather Goods</div>
+                      <div className="text-[11px] text-[#8C8477] dark:text-[#A8A29E]">Waxed canvas & waterproof carryalls</div>
                     </div>
                   </button>
 
                   <button
                     onClick={() => navigateTo('shop', 'shoes')}
-                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors flex items-center justify-between group/item"
+                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors flex items-center justify-between group/item"
                   >
                     <div>
-                      <div className="font-semibold text-[#1F1F1F] group-hover/item:text-[#C85A32]">Footwear & Boots</div>
-                      <div className="text-[11px] text-[#8C8477]">Waterproof nubuck & trail shoes</div>
+                      <div className="font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] group-hover/item:text-[#C85A32] dark:group-hover/item:text-[#E87A54]">Footwear & Boots</div>
+                      <div className="text-[11px] text-[#8C8477] dark:text-[#A8A29E]">Waterproof nubuck & trail shoes</div>
                     </div>
                   </button>
 
                   <button
                     onClick={() => navigateTo('shop', 'glasses')}
-                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors flex items-center justify-between group/item"
+                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors flex items-center justify-between group/item"
                   >
                     <div>
-                      <div className="font-semibold text-[#1F1F1F] group-hover/item:text-[#C85A32]">Optics & Eyewear</div>
-                      <div className="text-[11px] text-[#8C8477]">Italian bio-acetate handcrafted frames</div>
+                      <div className="font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] group-hover/item:text-[#C85A32] dark:group-hover/item:text-[#E87A54]">Optics & Eyewear</div>
+                      <div className="text-[11px] text-[#8C8477] dark:text-[#A8A29E]">Italian bio-acetate handcrafted frames</div>
                     </div>
                   </button>
 
                   <button
                     onClick={() => navigateTo('shop', 'hats')}
-                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors flex items-center justify-between group/item"
+                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors flex items-center justify-between group/item"
                   >
                     <div>
-                      <div className="font-semibold text-[#1F1F1F] group-hover/item:text-[#C85A32]">Headwear & Caps</div>
-                      <div className="text-[11px] text-[#8C8477]">Organic twill 6-panel silhouettes</div>
+                      <div className="font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] group-hover/item:text-[#C85A32] dark:group-hover/item:text-[#E87A54]">Headwear & Caps</div>
+                      <div className="text-[11px] text-[#8C8477] dark:text-[#A8A29E]">Organic twill 6-panel silhouettes</div>
                     </div>
                   </button>
 
                   <button
                     onClick={() => navigateTo('shop', 'apparel')}
-                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors flex items-center justify-between group/item"
+                    className="w-full text-left px-3 py-2 rounded-xs text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors flex items-center justify-between group/item"
                   >
                     <div>
-                      <div className="font-semibold text-[#1F1F1F] group-hover/item:text-[#C85A32]">Apparel & Outerwear</div>
-                      <div className="text-[11px] text-[#8C8477]">Heavyweight cotton & winter down</div>
+                      <div className="font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] group-hover/item:text-[#C85A32] dark:group-hover/item:text-[#E87A54]">Apparel & Outerwear</div>
+                      <div className="text-[11px] text-[#8C8477] dark:text-[#A8A29E]">Heavyweight cotton & winter down</div>
                     </div>
                   </button>
                 </div>
@@ -191,8 +192,8 @@ export const Header: React.FC = () => {
               onMouseLeave={() => setPagesDropdownOpen(false)}
             >
               <button
-                className={`flex items-center gap-1 hover:text-[#C85A32] transition-colors cursor-pointer py-2 ${
-                  ['about', 'lookbook', 'tracking'].includes(activePage) ? 'text-[#C85A32]' : ''
+                className={`flex items-center gap-1 hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors cursor-pointer py-2 ${
+                  ['about', 'lookbook', 'tracking'].includes(activePage) ? 'text-[#C85A32] dark:text-[#E87A54]' : ''
                 }`}
               >
                 PAGES
@@ -200,22 +201,22 @@ export const Header: React.FC = () => {
               </button>
 
               {pagesDropdownOpen && (
-                <div className="absolute top-full left-0 w-56 bg-white border border-[#EAE6DE] shadow-xl py-2 z-50 rounded-xs animate-fadeIn">
+                <div className="absolute top-full left-0 w-56 bg-white dark:bg-[#161616] border border-[#EAE6DE] dark:border-[#282828] shadow-xl py-2 z-50 rounded-xs animate-fadeIn">
                   <button
                     onClick={() => navigateTo('about')}
-                    className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors"
+                    className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] text-[#1F1F1F] dark:text-[#F5F3EF] transition-colors"
                   >
                     About Brand
                   </button>
                   <button
                     onClick={() => navigateTo('lookbook')}
-                    className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors"
+                    className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] text-[#1F1F1F] dark:text-[#F5F3EF] transition-colors"
                   >
                     Editorial Lookbook
                   </button>
                   <button
                     onClick={() => navigateTo('tracking')}
-                    className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-[#FAF9F6] hover:text-[#C85A32] transition-colors"
+                    className="w-full text-left px-4 py-2 text-xs font-medium hover:bg-[#FAF9F6] dark:hover:bg-[#222] hover:text-[#C85A32] dark:hover:text-[#E87A54] text-[#1F1F1F] dark:text-[#F5F3EF] transition-colors"
                   >
                     Live Order Tracking
                   </button>
@@ -225,8 +226,8 @@ export const Header: React.FC = () => {
 
             <button
               onClick={() => navigateTo('blog')}
-              className={`hover:text-[#C85A32] transition-colors cursor-pointer py-2 ${
-                activePage === 'blog' ? 'text-[#C85A32]' : ''
+              className={`hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors cursor-pointer py-2 ${
+                activePage === 'blog' ? 'text-[#C85A32] dark:text-[#E87A54]' : ''
               }`}
             >
               JOURNAL
@@ -234,8 +235,8 @@ export const Header: React.FC = () => {
 
             <button
               onClick={() => navigateTo('contact')}
-              className={`hover:text-[#C85A32] transition-colors cursor-pointer py-2 ${
-                activePage === 'contact' ? 'text-[#C85A32]' : ''
+              className={`hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors cursor-pointer py-2 ${
+                activePage === 'contact' ? 'text-[#C85A32] dark:text-[#E87A54]' : ''
               }`}
             >
               CONTACT
@@ -243,20 +244,20 @@ export const Header: React.FC = () => {
           </nav>
 
           {/* Right: Actions */}
-          <div className="flex items-center space-x-3 sm:space-x-4 text-[#1F1F1F]">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {/* Currency Selector */}
-            <div className="hidden md:flex items-center border border-[#EAE6DE] rounded-xs px-2 py-1 bg-[#FAF9F6]">
-              <span className="text-[10px] font-bold text-[#8C8477] mr-1">CUR</span>
+            <div className="hidden sm:flex items-center bg-[#FAF9F6] dark:bg-[#1E1E1E] border border-[#EAE6DE] dark:border-[#282828] rounded-xs px-2 py-1">
+              <Globe className="w-3.5 h-3.5 text-[#8C8275] dark:text-[#A8A29E] mr-1.5" />
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as Currency)}
-                className="bg-transparent text-xs font-semibold text-[#1F1F1F] cursor-pointer focus:outline-none"
+                className="bg-transparent text-xs font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] cursor-pointer focus:outline-none"
                 aria-label="Currency Selector"
               >
-                <option value="INR">INR (₹)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
+                <option value="INR" className="dark:bg-[#1A1A1A]">INR (₹)</option>
+                <option value="USD" className="dark:bg-[#1A1A1A]">USD ($)</option>
+                <option value="EUR" className="dark:bg-[#1A1A1A]">EUR (€)</option>
+                <option value="GBP" className="dark:bg-[#1A1A1A]">GBP (£)</option>
               </select>
             </div>
 

@@ -68,18 +68,18 @@ export const ProductGrids: React.FC = () => {
     <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       
       {/* Section Heading & Tabs */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-[#EAE6DE] pb-6">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-[#EAE6DE] dark:border-[#282828] pb-6">
         <div>
-          <h2 className="text-3xl font-serif font-medium text-[#1F1F1F] dark:text-white tracking-tight text-center md:text-left">
+          <h2 className="text-3xl font-serif font-medium text-[#1A1918] dark:text-[#F5F3EF] tracking-tight text-center md:text-left antialiased">
             Curated Collections
           </h2>
-          <p className="font-sans text-xs text-[#827A6D] dark:text-neutral-400 mt-1 text-center md:text-left">
+          <p className="font-sans text-xs text-[#6E685F] dark:text-[#A8A29E] mt-1 text-center md:text-left">
             Minimalist Nordic apparel, optics, and handcrafted accessories.
           </p>
         </div>
 
         {/* Tab Switcher with sliding layoutId indicator */}
-        <div className="flex items-center gap-1.5 bg-[#EFECE6] dark:bg-[#222] p-1 rounded-full text-xs font-medium relative overflow-x-auto no-scrollbar max-w-full">
+        <div className="flex items-center gap-1.5 bg-[#EFECE6] dark:bg-[#1E1E1E] p-1 rounded-full text-xs font-medium relative overflow-x-auto no-scrollbar max-w-full">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -88,14 +88,14 @@ export const ProductGrids: React.FC = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative px-4 py-1.5 rounded-full transition-all cursor-pointer ${
                   isActive
-                    ? 'text-[#1F1F1F] font-semibold'
-                    : 'text-[#696256] hover:text-[#1F1F1F]'
+                    ? 'text-[#1A1918] dark:text-[#F5F3EF] font-semibold'
+                    : 'text-[#696256] dark:text-[#A8A29E] hover:text-[#1A1918] dark:hover:text-[#F5F3EF]'
                 }`}
               >
                 {isActive && (
                   <motion.span
                     layoutId="homeProductTab"
-                    className="absolute inset-0 rounded-full bg-white shadow-xs"
+                    className="absolute inset-0 rounded-full bg-white dark:bg-[#2C2C2C] shadow-xs"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
@@ -125,7 +125,7 @@ export const ProductGrids: React.FC = () => {
       <div className="mt-12 text-center">
         <button
           onClick={handleViewAll}
-          className="inline-flex items-center gap-2 bg-[#1F1F1F] hover:bg-[#C85A32] text-white text-xs font-semibold tracking-widest uppercase px-8 py-3.5 rounded-xs transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 bg-[#1A1918] dark:bg-[#F5F3EF] hover:bg-[#C85A32] dark:hover:bg-[#E87A54] text-white dark:text-[#1A1918] dark:hover:text-white text-xs font-semibold tracking-widest uppercase px-8 py-3.5 rounded-xs transition-colors cursor-pointer"
         >
           <span>VIEW FULL CATALOG</span>
           <ArrowRight className="w-4 h-4" />

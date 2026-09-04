@@ -26,22 +26,22 @@ export const CategoryGrid: React.FC = () => {
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       {/* Section Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12 border-b border-[#EAE6DE] pb-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12 border-b border-[#EAE6DE] dark:border-[#282828] pb-6">
         <div>
-          <div className="flex items-center gap-2 font-sans text-[11px] font-semibold text-[#C85A32] uppercase tracking-[0.22em] mb-2">
-            <Compass className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2 font-sans text-[11px] font-semibold text-[#C85A32] dark:text-[#E87A54] uppercase tracking-[0.22em] mb-2">
+            <Compass className="w-3.5 h-3.5 text-[#C85A32] dark:text-[#E87A54]" />
             <span>Curated Departments</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-serif font-medium text-[#1F1F1F] dark:text-white tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-serif font-medium text-[#1A1918] dark:text-[#F5F3EF] tracking-tight antialiased">
             Design-Forward Categories
           </h2>
         </div>
         <button
           onClick={() => handleCategoryClick('all')}
-          className="font-sans text-xs font-semibold text-[#1F1F1F] dark:text-[#EAEAEA] hover:text-[#C85A32] uppercase tracking-[0.18em] flex items-center gap-1.5 self-start md:self-auto cursor-pointer transition-colors group"
+          className="font-sans text-xs font-semibold text-[#1A1918] dark:text-[#EAE6DE] hover:text-[#C85A32] dark:hover:text-[#E87A54] uppercase tracking-[0.18em] flex items-center gap-1.5 self-start md:self-auto cursor-pointer transition-colors group"
         >
           <span>Explore All Collections</span>
-          <ArrowUpRight className="w-4 h-4 text-[#C85A32] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          <ArrowUpRight className="w-4 h-4 text-[#C85A32] dark:text-[#E87A54] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
         </button>
       </div>
 

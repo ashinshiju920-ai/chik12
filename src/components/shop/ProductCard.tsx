@@ -35,10 +35,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const hoverImage = product.images[1] || product.images[0];
 
   return (
-    <div className="group relative flex flex-col bg-white border border-[#EFECE6] rounded-xs overflow-hidden transition-all duration-300 hover:shadow-md hover:border-[#D5D0C5] text-left">
+    <div className="group relative flex flex-col bg-white dark:bg-[#161616] border border-[#EFECE6] dark:border-[#282828] rounded-xs overflow-hidden transition-all duration-300 hover:shadow-md hover:border-[#D5D0C5] dark:hover:border-[#444444] text-left">
       
       {/* Aspect-[3/4] Portrait Image Container */}
-      <div className="relative w-full aspect-[3/4] bg-[#f7f7f7] overflow-hidden">
+      <div className="relative w-full aspect-[3/4] bg-[#f7f7f7] dark:bg-[#1C1C1C] overflow-hidden">
         
         {/* Floating Badges */}
         <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 pointer-events-none">
@@ -173,16 +173,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 fontFamily: product.customFont || undefined,
                 fontSize: product.customFontSize || undefined
               }}
-              className="product-title text-xs sm:text-sm font-medium text-neutral-900 hover:text-[#C85A32] transition-colors cursor-pointer line-clamp-1 flex-1 font-heading"
+              className="product-title text-xs sm:text-sm font-medium text-neutral-900 dark:text-[#F5F3EF] hover:text-[#C85A32] dark:hover:text-[#E87A54] transition-colors cursor-pointer line-clamp-1 flex-1 font-heading antialiased"
             >
               {product.name}
             </h3>
             <div className="flex items-baseline gap-1 text-right shrink-0">
-              <span className="text-xs sm:text-sm font-semibold text-neutral-900">
+              <span className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-[#F5F3EF]">
                 {formatPrice(product.price)}
               </span>
               {product.originalPrice && product.originalPrice > product.price && (
-                <span className="text-[10px] sm:text-xs text-neutral-400 line-through">
+                <span className="text-[10px] sm:text-xs text-neutral-400 dark:text-[#7A756C] line-through">
                   {formatPrice(product.originalPrice)}
                 </span>
               )}
@@ -190,23 +190,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
 
           {/* Muted Variant / Fabric Line */}
-          <p className="text-[11px] sm:text-xs text-neutral-500 mt-0.5 line-clamp-1 font-sans">
+          <p className="text-[11px] sm:text-xs text-neutral-500 dark:text-[#A8A29E] mt-0.5 line-clamp-1 font-sans">
             {product.tagline || product.material || 'Artisanal Craftsmanship • Pure Organic Fiber'}
           </p>
 
           {/* Concise 1-Line Benefit Note */}
-          <p className="text-[10px] sm:text-[11px] text-neutral-400 line-clamp-1 mt-0.5 italic">
+          <p className="text-[10px] sm:text-[11px] text-neutral-400 dark:text-[#8C8477] line-clamp-1 mt-0.5 italic">
             {product.description || 'Engineered for enduring Nordic luxury and all-day comfort.'}
           </p>
         </div>
 
         {/* Rating & Action Row */}
-        <div className="pt-2 border-t border-neutral-100 flex items-center justify-between gap-2 mt-auto">
+        <div className="pt-2 border-t border-neutral-100 dark:border-[#282828] flex items-center justify-between gap-2 mt-auto">
           {/* Rating */}
           <div className="flex items-center gap-1">
             <Star className="w-3 h-3 fill-[#FBC02D] text-[#FBC02D]" />
-            <span className="text-[11px] font-semibold text-neutral-700">{product.rating || 5.0}</span>
-            <span className="text-[10px] text-neutral-400">({product.reviewCount || 12})</span>
+            <span className="text-[11px] font-semibold text-neutral-700 dark:text-[#D5D0C5]">{product.rating || 5.0}</span>
+            <span className="text-[10px] text-neutral-400 dark:text-[#8C8477]">({product.reviewCount || 12})</span>
           </div>
 
           {/* Quick Buy CTA with Real-Time Custom Color Support */}

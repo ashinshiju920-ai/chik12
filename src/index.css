@@ -139,7 +139,7 @@
   html.dark, body.dark {
     --primary: #E06C43;
     --primary-hover: #F07D53;
-    --jet-charcoal: #F5F5F4;
+    --jet-charcoal: #F5F3EF;
     --trust-bg: #081B1E;
     --cream-bg: #0D0D0D;
     --accent-red: #EF4444;
@@ -148,11 +148,11 @@
     --bg-main: #0D0D0D;
     --bg-card: #161616;
     --border-main: #282828;
-    --text-main: #F5F5F4;
+    --text-main: #F5F3EF;
     --text-muted: #A8A29E;
 
     background-color: #0D0D0D !important;
-    color: #F5F5F4 !important;
+    color: #F5F3EF !important;
     color-scheme: dark;
   }
 
@@ -164,12 +164,35 @@
     transition: background-color 0.25s ease, color 0.25s ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, h4, .font-heading, .font-serif, .font-editorial, .font-display {
     font-family: var(--font-heading) !important;
     font-size: calc(1em * var(--size-heading-scale));
     letter-spacing: -0.015em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Specific anti-fringing engine for Windows Chromium & OLED displays in dark mode */
+  html.dark h1,
+  html.dark h2,
+  html.dark h3,
+  html.dark h4,
+  html.dark h5,
+  html.dark h6,
+  html.dark .font-serif,
+  html.dark .font-heading,
+  html.dark .font-display,
+  html.dark .font-editorial,
+  html.dark .font-product,
+  html.dark .font-product-title {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-text-stroke: 0.12px rgba(245, 243, 239, 0.08);
   }
 
   .product-title, .font-product {
@@ -220,16 +243,26 @@
     border-color: #282828 !important;
   }
   html.dark .text-\[\#1F1F1F\],
+  html.dark .text-\[\#1A1918\],
   html.dark .text-\[\#141414\],
-  html.dark .text-black {
-    color: #F5F5F4 !important;
+  html.dark .text-black,
+  html.dark .text-slate-900,
+  html.dark .text-neutral-900 {
+    color: #F5F3EF !important;
   }
   html.dark .text-\[\#4A453C\],
   html.dark .text-\[\#555048\],
   html.dark .text-\[\#6E685F\],
+  html.dark .text-\[\#696256\],
+  html.dark .text-\[\#736B5E\],
   html.dark .text-\[\#7A7264\],
+  html.dark .text-\[\#827A6D\],
   html.dark .text-\[\#8C8477\],
-  html.dark .text-\[\#8C8275\] {
+  html.dark .text-\[\#8C8275\],
+  html.dark .text-slate-600,
+  html.dark .text-slate-500,
+  html.dark .text-neutral-600,
+  html.dark .text-neutral-500 {
     color: #A8A29E !important;
   }
   html.dark input:not([type="checkbox"]):not([type="radio"]),
@@ -237,7 +270,7 @@
   html.dark textarea {
     background-color: #1A1A1A !important;
     border-color: #333333 !important;
-    color: #F5F5F4 !important;
+    color: #F5F3EF !important;
   }
   html.dark input::placeholder,
   html.dark textarea::placeholder {

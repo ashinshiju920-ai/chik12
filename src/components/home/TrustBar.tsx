@@ -26,7 +26,7 @@ export const TrustBar: React.FC = () => {
   ];
 
   return (
-    <section className="bg-[#0C2B2F] text-white py-16 px-4 sm:px-6 lg:px-8 border-y border-[#082023]">
+    <section className="bg-[#0C2B2F] dark:bg-[#071618] text-white py-16 px-4 sm:px-6 lg:px-8 border-y border-[#082023] dark:border-[#0c2428] antialiased">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           {pillars.map((p, idx) => {
