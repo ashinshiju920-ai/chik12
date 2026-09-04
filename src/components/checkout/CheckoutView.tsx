@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { DivaChikLogo } from '../common/DivaChikLogo';
 import { Address } from '../../types';
@@ -22,7 +22,8 @@ import {
   AlertCircle,
   HelpCircle,
   ChevronDown,
-  Gift
+  Gift,
+  ShoppingBag
 } from 'lucide-react';
 
 export const CheckoutView: React.FC = () => {
@@ -47,6 +48,11 @@ export const CheckoutView: React.FC = () => {
 
   const isConfirmation = activePage === 'order-confirmation';
 
+  // Anti-bot armor & timing protection
+  const [botHoneypot, setBotHoneypot] = useState('');
+  const formMountTime = useRef(Date.now());
+  const lastSyncTime = useRef(0);
+
   // Address and User Defaults
   const defaultAddr = currentUser?.addresses.find((a) => a.isDefault) || currentUser?.addresses[0];
   const initialFullName = defaultAddr?.fullName || currentUser?.name || '';
@@ -66,6 +72,9 @@ export const CheckoutView: React.FC = () => {
   const [state, setState] = useState(defaultAddr?.state || '');
   const [pincode, setPincode] = useState(defaultAddr?.pincode || '');
   const [selectedSavedAddrId, setSelectedSavedAddrId] = useState<string>(defaultAddr?.id || 'new');
+
+  // Mobile Order Summary Accordion
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
   // Packaging selection (Eco Friendly vs. DivaChic Signature)
   const [packagingOption, setPackagingOption] = useState<'eco' | 'signature'>('eco');
@@ -108,6 +117,14 @@ export const CheckoutView: React.FC = () => {
   const GOOGLE_SHEETS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyjk8MYflKlMaqFM8ZQzwl673roAingHJSsclhshnBd709DqUmMArW3TGx1pId93hU/exec";
   
   const syncFormToGoogleSheetsExcel = (overrides?: Record<string, string>) => {
+    // Rate limit: at least 600ms between calls to avoid spamming
+    const now = Date.now();
+    if (now - lastSyncTime.current < 600) return;
+    lastSyncTime.current = now;
+
+    // Discard bot submissions
+    if (botHoneypot) return;
+
     try {
       const computedName = overrides?.name || `${firstName.trim()} ${lastName.trim()}`.trim();
       const payload = {
@@ -156,9 +173,20 @@ export const CheckoutView: React.FC = () => {
     }
   }, [isConfirmation, currentOrder]);
 
-  // Validation
+  // Validation with Anti-Bot Armor
   const validateForm = (): boolean => {
     setErrorMessage('');
+
+    // Reject automated scraper bots
+    if (botHoneypot) {
+      console.warn('Bot submission blocked via honeypot.');
+      return false;
+    }
+    if (Date.now() - formMountTime.current < 500) {
+      console.warn('Rapid automated form submission rejected.');
+      return false;
+    }
+
     if (!firstName.trim()) {
       setErrorMessage('Please enter your first name.');
       return false;
@@ -572,16 +600,16 @@ export const CheckoutView: React.FC = () => {
     )}`;
 
     return (
-      <div className="bg-[#FAF9F6] min-h-screen py-12 sm:py-16">
+      <div className="bg-[#FAF9F6] min-h-screen py-10 sm:py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-white border border-neutral-200 shadow-sm p-6 sm:p-10 space-y-8"
+            className="bg-white border border-neutral-200 shadow-sm p-5 sm:p-10 space-y-6 sm:space-y-8"
           >
             {/* WhatsApp Direct Dispatch Notice */}
-            <div className="bg-[#EBF5EF] border border-[#25D366]/40 p-5 space-y-3">
+            <div className="bg-[#EBF5EF] border border-[#25D366]/40 p-4 sm:p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-[#128C7E] font-bold text-sm">
                   <MessageCircle className="w-5 h-5 fill-[#25D366] text-white shrink-0" />
@@ -596,7 +624,7 @@ export const CheckoutView: React.FC = () => {
               </p>
               <a
                 href={whatsappLink}
-                className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-bold py-3 px-4 uppercase tracking-widest transition-all inline-flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                className="w-full bg-[#25D366] hover:bg-[#128C7E] active:scale-[0.98] text-white text-xs font-bold py-3 px-4 uppercase tracking-widest transition-all inline-flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               >
                 <MessageCircle className="w-4 h-4 fill-white text-white" />
                 <span>Open WhatsApp Concierge Immediately</span>
@@ -614,7 +642,7 @@ export const CheckoutView: React.FC = () => {
               <span className="text-[10px] font-serif tracking-widest uppercase text-neutral-400 block">
                 Official Order Receipt
               </span>
-              <h1 className="text-3xl font-serif text-neutral-900 font-semibold tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-serif text-neutral-900 font-semibold tracking-tight">
                 Thank You For Your Acquisition
               </h1>
               <p className="text-xs sm:text-sm text-neutral-500 max-w-md mx-auto leading-relaxed font-serif">
@@ -693,14 +721,14 @@ export const CheckoutView: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-neutral-200">
               <button
                 onClick={() => window.print()}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 border border-neutral-300 hover:border-neutral-900 text-neutral-800 text-xs font-serif uppercase tracking-widest px-4 py-3 transition-colors cursor-pointer"
+                className="w-full sm:w-auto active:scale-95 inline-flex items-center justify-center gap-2 border border-neutral-300 hover:border-neutral-900 text-neutral-800 text-xs font-serif uppercase tracking-widest px-4 py-3 transition-all cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Tax Invoice</span>
               </button>
               <button
                 onClick={() => setActivePage('shop')}
-                className="w-full sm:w-auto bg-neutral-900 hover:bg-black text-white text-xs font-serif uppercase tracking-widest px-6 py-3 transition-colors cursor-pointer"
+                className="w-full sm:w-auto active:scale-95 bg-neutral-900 hover:bg-black text-white text-xs font-serif uppercase tracking-widest px-6 py-3 transition-all cursor-pointer"
               >
                 Continue Exploring Collections
               </button>
@@ -732,7 +760,7 @@ export const CheckoutView: React.FC = () => {
           </p>
           <button
             onClick={() => setActivePage('shop')}
-            className="w-full bg-neutral-900 hover:bg-black text-white text-xs font-serif uppercase tracking-widest py-3.5 px-6 transition-all duration-300 cursor-pointer shadow-sm"
+            className="w-full bg-neutral-900 hover:bg-black text-white text-xs font-serif uppercase tracking-widest py-3.5 px-6 transition-all duration-300 cursor-pointer shadow-sm active:scale-[0.98]"
           >
             Explore Designer Catalog
           </button>
@@ -745,21 +773,21 @@ export const CheckoutView: React.FC = () => {
   // MAIN LUXURY EDITORIAL CHECKOUT VIEW (BERGDORF GOODMAN DEMO ANATOMY)
   // =========================================================================
   return (
-    <div className="bg-white min-h-screen text-neutral-900 font-sans">
+    <div className="bg-white min-h-screen text-neutral-900 font-sans pb-12 sm:pb-0">
       
       {/* 1. TOP EDITORIAL BRAND HEADER */}
-      <div className="bg-white border-b border-neutral-200 py-6 text-center">
+      <div className="bg-white border-b border-neutral-200 py-4 sm:py-6 text-center">
         <div className="max-w-6xl mx-auto px-4 flex items-center justify-between relative">
           <button
             onClick={() => setActivePage('cart')}
-            className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer active:scale-95"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Return to Bag</span>
           </button>
           
           <div className="mx-auto cursor-pointer" onClick={() => setActivePage('home')}>
-            <h1 className="font-serif text-2xl sm:text-3xl tracking-[0.22em] uppercase text-neutral-900 font-normal">
+            <h1 className="font-serif text-xl sm:text-3xl tracking-[0.22em] uppercase text-neutral-900 font-normal">
               DIVACHIC COUTURE
             </h1>
           </div>
@@ -772,27 +800,102 @@ export const CheckoutView: React.FC = () => {
       </div>
 
       {/* 2. BLACK LUXURY PROMO BANNER (As seen in Bergdorf Goodman Demo) */}
-      <div className="bg-black text-white py-2.5 px-4 text-center text-xs tracking-wide">
-        <span className="font-serif">
+      <div className="bg-black text-white py-2 sm:py-2.5 px-4 text-center text-xs tracking-wide">
+        <span className="font-serif text-[11px] sm:text-xs">
           Earn a ₹500 - ₹2,500 Gift Voucher with code <strong className="font-sans font-bold underline tracking-wider cursor-pointer" onClick={() => { setPromoOpen(true); setPromoInput('DIVAGIFT'); }}>DIVAGIFT</strong> <span className="underline cursor-pointer ml-1 text-neutral-300 hover:text-white" onClick={() => setPromoOpen(true)}>Details</span>
         </span>
         <span className="mx-3 text-neutral-600 hidden sm:inline">|</span>
-        <span className="text-neutral-300 hidden sm:inline font-serif">Complimentary Express Delivery Over ₹2,999</span>
+        <span className="text-neutral-300 hidden sm:inline font-serif text-xs">Complimentary Express Delivery Over ₹2,999</span>
+      </div>
+
+      {/* 2b. MOBILE ORDER SUMMARY ACCORDION (Shopify / Bergdorf luxury mobile standard) */}
+      <div className="lg:hidden border-b border-neutral-200 bg-[#FAF9F6]">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setMobileSummaryOpen(!mobileSummaryOpen)}
+            className="flex items-center gap-2 text-xs font-serif font-medium text-neutral-800 cursor-pointer active:scale-95 transition-transform"
+          >
+            <ShoppingBag className="w-4 h-4 text-neutral-600" />
+            <span>{mobileSummaryOpen ? 'Hide order summary' : 'Show order summary'}</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 transition-transform duration-200 ${mobileSummaryOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <div className="font-serif font-bold text-sm text-neutral-900">
+            ₹{finalPayable.toLocaleString('en-IN')}
+          </div>
+        </div>
+
+        {mobileSummaryOpen && (
+          <div className="max-w-6xl mx-auto px-4 pb-4 pt-1 border-t border-neutral-200/60 bg-white">
+            <div className="divide-y divide-neutral-100 max-h-60 overflow-y-auto mb-3">
+              {cart.map((item) => (
+                <div key={`mob-${item.productId}-${item.selectedColor || ''}-${item.selectedSize || ''}`} className="py-2.5 flex items-center gap-3">
+                  <div className="w-12 aspect-[3/4] bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
+                    <img
+                      src={item.product.images[0] || 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=800&auto=format&fit=crop'}
+                      alt={item.product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 text-xs font-serif">
+                    <h5 className="font-medium text-neutral-900 truncate">{item.product.name}</h5>
+                    <p className="text-[10px] text-neutral-500">Qty: {item.quantity} {item.selectedSize ? `• Size: ${item.selectedSize}` : ''}</p>
+                    <span className="font-bold text-neutral-900 mt-0.5 block">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5 text-xs font-serif pt-2 border-t border-neutral-100">
+              <div className="flex justify-between text-neutral-600">
+                <span>Subtotal ({cartCount} items)</span>
+                <span>₹{subtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between text-neutral-600">
+                <span>Delivery</span>
+                <span>{paymentMethod === 'ONLINE' ? 'FREE' : '₹150.00'}</span>
+              </div>
+              {packagingFee > 0 && (
+                <div className="flex justify-between text-neutral-600">
+                  <span>BG Signature Packaging</span>
+                  <span>₹{packagingFee.toFixed(2)}</span>
+                </div>
+              )}
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-700 font-medium">
+                  <span>Promo Discount</span>
+                  <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. MAIN TWO-COLUMN CHECKOUT GRID */}
-      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-10 grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr] gap-12">
+      <div className="max-w-6xl mx-auto px-4 lg:px-8 py-6 sm:py-10 grid grid-cols-1 lg:grid-cols-[1.25fr_0.75fr] gap-8 lg:gap-12">
 
         {/* LEFT COLUMN: Checkout Form & Selection */}
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
 
           {/* PAGE TITLE */}
-          <h2 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-neutral-900 uppercase">
+          <h2 className="text-xl sm:text-3xl font-serif font-bold tracking-tight text-neutral-900 uppercase">
             CHECKOUT
           </h2>
 
+          {/* Anti-Bot Armor: Invisible Honeypot Trap */}
+          <div className="anti-bot-honey" aria-hidden="true">
+            <input
+              type="text"
+              name="client_fax_honey"
+              tabIndex={-1}
+              autoComplete="off"
+              value={botHoneypot}
+              onChange={(e) => setBotHoneypot(e.target.value)}
+            />
+          </div>
+
           {/* MEMBER SIGN IN / GUEST PROMPT (Image 1 Box) */}
-          <div className="border border-neutral-200 p-5 bg-[#FAF9F6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="border border-neutral-200 p-4 sm:p-5 bg-[#FAF9F6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <p className="text-xs font-serif font-bold text-neutral-900">
                 {currentUser ? `Welcome back, ${currentUser.name}!` : 'Sign in to enjoy member perks and faster checkout!'}
@@ -805,7 +908,7 @@ export const CheckoutView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAuthModalOpen(true)}
-                className="border border-neutral-900 hover:bg-neutral-900 hover:text-white px-6 py-2.5 text-xs font-serif uppercase tracking-widest font-semibold transition-colors cursor-pointer shrink-0 text-center"
+                className="border border-neutral-900 hover:bg-neutral-900 hover:text-white active:scale-95 px-6 py-2.5 text-xs font-serif uppercase tracking-widest font-semibold transition-all cursor-pointer shrink-0 text-center"
               >
                 SIGN IN
               </button>
@@ -836,7 +939,7 @@ export const CheckoutView: React.FC = () => {
                   <div
                     key={addr.id}
                     onClick={() => handleSelectSavedAddress(addr)}
-                    className={`p-3 border cursor-pointer text-xs transition-all ${
+                    className={`p-3 border cursor-pointer text-xs transition-all active:scale-[0.99] ${
                       selectedSavedAddrId === addr.id
                         ? 'border-neutral-900 bg-neutral-50 ring-1 ring-neutral-900'
                         : 'border-neutral-200 hover:border-neutral-400 bg-white'
@@ -904,6 +1007,7 @@ export const CheckoutView: React.FC = () => {
                   </label>
                   <input
                     type="email"
+                    inputMode="email"
                     required
                     autoComplete="off"
                     autoCorrect="off"
@@ -922,6 +1026,7 @@ export const CheckoutView: React.FC = () => {
                   </label>
                   <input
                     type="tel"
+                    inputMode="tel"
                     required
                     autoComplete="off"
                     autoCorrect="off"
@@ -1040,6 +1145,8 @@ export const CheckoutView: React.FC = () => {
                   </label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     required
                     maxLength={6}
                     autoComplete="off"
@@ -1060,7 +1167,7 @@ export const CheckoutView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleContinueToPayment}
-                className="w-full sm:w-auto bg-black hover:bg-neutral-800 text-white font-serif uppercase tracking-widest text-xs py-3.5 px-8 transition-colors cursor-pointer font-semibold shadow-xs"
+                className="w-full sm:w-auto bg-black hover:bg-neutral-800 active:scale-[0.98] text-white font-serif uppercase tracking-widest text-xs py-3.5 px-8 transition-all cursor-pointer font-semibold shadow-xs"
               >
                 CONTINUE TO SELECT PAYMENT METHOD
               </button>
@@ -1077,7 +1184,7 @@ export const CheckoutView: React.FC = () => {
               {/* Option 1: Eco Friendly ($0 / ₹0) */}
               <div
                 onClick={() => setPackagingOption('eco')}
-                className={`p-4 border cursor-pointer flex items-center justify-between gap-4 transition-all ${
+                className={`p-4 border cursor-pointer flex items-center justify-between gap-4 transition-all active:scale-[0.99] ${
                   packagingOption === 'eco'
                     ? 'border-neutral-900 bg-neutral-50/70 ring-1 ring-neutral-900'
                     : 'border-neutral-200 hover:border-neutral-400 bg-white'
@@ -1107,7 +1214,7 @@ export const CheckoutView: React.FC = () => {
               {/* Option 2: DivaChic Signature ($7.50 / ₹150) */}
               <div
                 onClick={() => setPackagingOption('signature')}
-                className={`p-4 border cursor-pointer flex items-center justify-between gap-4 transition-all ${
+                className={`p-4 border cursor-pointer flex items-center justify-between gap-4 transition-all active:scale-[0.99] ${
                   packagingOption === 'signature'
                     ? 'border-neutral-900 bg-neutral-50/70 ring-1 ring-neutral-900'
                     : 'border-neutral-200 hover:border-neutral-400 bg-white'
@@ -1148,7 +1255,7 @@ export const CheckoutView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsGift(!isGift)}
-                className="text-xs font-serif underline text-neutral-700 hover:text-black cursor-pointer inline-flex items-center gap-1.5"
+                className="text-xs font-serif underline text-neutral-700 hover:text-black cursor-pointer inline-flex items-center gap-1.5 active:scale-95"
               >
                 <Gift className="w-3.5 h-3.5 text-neutral-600" />
                 <span>{isGift ? 'Remove Gift Option' : 'Select Gift Option'}</span>
@@ -1213,7 +1320,7 @@ export const CheckoutView: React.FC = () => {
                         />
                         <button
                           type="submit"
-                          className="bg-neutral-900 hover:bg-black text-white px-5 py-2.5 text-xs uppercase tracking-wider font-semibold cursor-pointer font-serif"
+                          className="bg-neutral-900 hover:bg-black text-white px-5 py-2.5 text-xs uppercase tracking-wider font-semibold cursor-pointer font-serif active:scale-95"
                         >
                           Apply
                         </button>
@@ -1246,7 +1353,7 @@ export const CheckoutView: React.FC = () => {
                       />
                       <button
                         type="submit"
-                        className="bg-neutral-900 hover:bg-black text-white px-5 py-2.5 text-xs uppercase tracking-wider font-semibold cursor-pointer font-serif"
+                        className="bg-neutral-900 hover:bg-black text-white px-5 py-2.5 text-xs uppercase tracking-wider font-semibold cursor-pointer font-serif active:scale-95"
                       >
                         Apply
                       </button>
@@ -1267,7 +1374,7 @@ export const CheckoutView: React.FC = () => {
               {/* Option 1: Cashfree Payments (Online) */}
               <div
                 onClick={() => setPaymentMethod('ONLINE')}
-                className={`p-5 cursor-pointer transition-all border ${
+                className={`p-4 sm:p-5 cursor-pointer transition-all border active:scale-[0.99] ${
                   paymentMethod === 'ONLINE'
                     ? 'border-neutral-900 bg-neutral-50/70 ring-1 ring-neutral-900'
                     : 'border-neutral-200 hover:border-neutral-400 bg-white'
@@ -1319,7 +1426,7 @@ export const CheckoutView: React.FC = () => {
               {/* Option 2: Cash on Delivery (COD) */}
               <div
                 onClick={() => setPaymentMethod('COD')}
-                className={`p-5 cursor-pointer transition-all border ${
+                className={`p-4 sm:p-5 cursor-pointer transition-all border active:scale-[0.99] ${
                   paymentMethod === 'COD'
                     ? 'border-neutral-900 bg-neutral-50/70 ring-1 ring-neutral-900'
                     : 'border-neutral-200 hover:border-neutral-400 bg-white'
@@ -1357,7 +1464,7 @@ export const CheckoutView: React.FC = () => {
                 type="button"
                 onClick={handleProceedToCashfreePayment}
                 disabled={isProcessing}
-                className="w-full bg-black hover:bg-neutral-800 text-white py-4 px-6 text-xs font-serif font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 shadow-sm"
+                className="w-full bg-black hover:bg-neutral-800 active:scale-[0.98] text-white py-4 px-6 text-xs font-serif font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 shadow-sm"
               >
                 {isProcessing ? (
                   <>
@@ -1376,12 +1483,12 @@ export const CheckoutView: React.FC = () => {
                 type="button"
                 onClick={handleConfirmCodOrder}
                 disabled={isProcessing}
-                className="w-full bg-black hover:bg-neutral-800 text-white py-4 px-6 text-xs font-serif font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 shadow-sm"
+                className="w-full bg-black hover:bg-neutral-800 active:scale-[0.98] text-white py-4 px-6 text-xs font-serif font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 shadow-sm"
               >
                 {isProcessing ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>CONFIRMING CASH ON DELIVERY ORDER...</span>
+                    <span>CONFIRMING COD ORDER...</span>
                   </>
                 ) : (
                   <>
@@ -1396,7 +1503,7 @@ export const CheckoutView: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN: STICKY ORDER SUMMARY (Image 1 style) */}
-        <div>
+        <div className="hidden lg:block">
           <div className="border border-neutral-200 p-6 lg:p-7 sticky top-6 space-y-6 bg-white shadow-xs">
             
             {/* Header: ORDER (items) & Edit bag link */}
@@ -1407,7 +1514,7 @@ export const CheckoutView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActivePage('cart')}
-                className="text-xs font-serif underline text-neutral-600 hover:text-black cursor-pointer"
+                className="text-xs font-serif underline text-neutral-600 hover:text-black cursor-pointer active:scale-95"
               >
                 Edit bag
               </button>
@@ -1549,7 +1656,7 @@ export const CheckoutView: React.FC = () => {
       </div>
 
       {/* 4. FOOTER (Image 1 style: Privacy Policy, Terms of Use, Copyright) */}
-      <div className="bg-black text-white py-6 px-4 lg:px-8 mt-16 border-t border-neutral-800">
+      <div className="bg-black text-white py-6 px-4 lg:px-8 mt-12 sm:mt-16 border-t border-neutral-800 mb-safe">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-serif text-neutral-400">
           <div className="flex items-center gap-6">
             <button
