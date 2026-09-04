@@ -74,24 +74,24 @@ export const AuthModal: React.FC = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-white max-w-md w-full rounded-2xl shadow-2xl overflow-hidden border border-[#EAE6DE] relative z-10"
+            className="bg-white dark:bg-[#161616] max-w-md w-full rounded-2xl shadow-2xl overflow-hidden border border-[#EAE6DE] dark:border-[#282828] relative z-10"
           >
         {/* Header */}
-        <div className="p-6 border-b border-[#F0ECE1] flex items-center justify-between bg-[#FAF9F6]">
+        <div className="p-6 border-b border-[#F0ECE1] dark:border-[#282828] flex items-center justify-between bg-[#FAF9F6] dark:bg-[#1A1A1A]">
           <div>
             <div className="mb-1">
               <DivaChikLogo variant="full" size="sm" theme="auto" />
             </div>
-            <span className="text-[10px] font-bold text-[#C85A32] uppercase tracking-widest">
+            <span className="text-[10px] font-bold text-[#C85A32] dark:text-[#E87A54] uppercase tracking-widest">
               DivaChic Privé Lounge
             </span>
-            <h3 className="text-xl font-semibold text-[#1F1F1F] font-editorial mt-0.5">
+            <h3 className="text-xl font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] font-editorial mt-0.5">
               {authMode === 'login' ? 'Sign In to Your Account' : 'Create New Member Account'}
             </h3>
           </div>
           <button
             onClick={() => setIsAuthModalOpen(false)}
-            className="p-1 text-[#8C8477] hover:text-[#1F1F1F] cursor-pointer self-start"
+            className="p-1 text-[#8C8477] dark:text-[#A8A29E] hover:text-[#1F1F1F] dark:hover:text-white cursor-pointer self-start"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
@@ -99,11 +99,11 @@ export const AuthModal: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-2 border-b border-[#F0ECE1] text-xs font-semibold text-center">
+        <div className="grid grid-cols-2 border-b border-[#F0ECE1] dark:border-[#282828] text-xs font-semibold text-center">
           <button
             onClick={() => { setAuthMode('login'); setAuthError(''); }}
             className={`py-3.5 transition-colors cursor-pointer ${
-              authMode === 'login' ? 'border-b-2 border-[#C85A32] text-[#C85A32] font-bold bg-[#FAF9F6]/50' : 'text-[#7A7264] hover:text-black'
+              authMode === 'login' ? 'border-b-2 border-[#C85A32] text-[#C85A32] dark:text-[#E87A54] font-bold bg-[#FAF9F6]/50 dark:bg-[#222]/50' : 'text-[#7A7264] dark:text-[#A8A29E] hover:text-black dark:hover:text-white'
             }`}
           >
             Sign In
@@ -111,7 +111,7 @@ export const AuthModal: React.FC = () => {
           <button
             onClick={() => { setAuthMode('register'); setAuthError(''); }}
             className={`py-3.5 transition-colors cursor-pointer ${
-              authMode === 'register' ? 'border-b-2 border-[#C85A32] text-[#C85A32] font-bold bg-[#FAF9F6]/50' : 'text-[#7A7264] hover:text-black'
+              authMode === 'register' ? 'border-b-2 border-[#C85A32] text-[#C85A32] dark:text-[#E87A54] font-bold bg-[#FAF9F6]/50 dark:bg-[#222]/50' : 'text-[#7A7264] dark:text-[#A8A29E] hover:text-black dark:hover:text-white'
             }`}
           >
             Register
@@ -127,7 +127,7 @@ export const AuthModal: React.FC = () => {
               type="button"
               disabled={isLoading}
               onClick={handleGoogleSignIn}
-              className="w-full flex items-center justify-center gap-3 border border-[#D5D0C5] hover:bg-[#FAF9F6] py-3 rounded-xs text-xs font-semibold text-[#1F1F1F] transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
+              className="w-full flex items-center justify-center gap-3 border border-[#D5D0C5] dark:border-[#333] hover:bg-[#FAF9F6] dark:hover:bg-[#222] py-3 rounded-xs text-xs font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -139,16 +139,16 @@ export const AuthModal: React.FC = () => {
             </button>
 
             <div className="relative flex items-center justify-center my-4">
-              <div className="border-t border-[#EAE6DE] w-full"></div>
-              <span className="bg-white px-3 text-[10px] text-[#8C8477] uppercase tracking-wider absolute">
+              <div className="border-t border-[#EAE6DE] dark:border-[#282828] w-full"></div>
+              <span className="bg-white dark:bg-[#161616] px-3 text-[10px] text-[#8C8477] dark:text-[#A8A29E] uppercase tracking-wider absolute">
                 or with email & password
               </span>
             </div>
           </div>
 
           {authError && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xs flex items-center gap-2 text-xs text-red-700">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xs flex items-center gap-2 text-xs text-red-700 dark:text-red-300">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400" />
               <span>{authError}</span>
             </div>
           )}
@@ -156,17 +156,17 @@ export const AuthModal: React.FC = () => {
           <form onSubmit={handleFormSubmit} className="space-y-3.5">
             {authMode === 'register' && (
               <div>
-                <label className="text-[11px] font-semibold text-[#7A7264] block mb-1">
+                <label className="text-[11px] font-semibold text-[#7A7264] dark:text-[#D5D0C5] block mb-1">
                   Full Name
                 </label>
                 <div className="relative">
-                  <UserIcon className="w-4 h-4 text-[#8C8477] absolute left-3 top-3" />
+                  <UserIcon className="w-4 h-4 text-[#8C8477] dark:text-[#A8A29E] absolute left-3 top-3" />
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Helena Vance"
-                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-[#FAF9F6] border border-[#D5D0C5] rounded-xs focus:outline-none focus:border-[#C85A32] focus:bg-white"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-[#FAF9F6] dark:bg-[#1E1E1E] border border-[#D5D0C5] dark:border-[#333] rounded-xs focus:outline-none focus:border-[#C85A32] focus:bg-white dark:focus:bg-[#1A1A1A] text-neutral-900 dark:text-[#F5F3EF]"
                     required
                   />
                 </div>
@@ -174,34 +174,34 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div>
-              <label className="text-[11px] font-semibold text-[#7A7264] block mb-1">
+              <label className="text-[11px] font-semibold text-[#7A7264] dark:text-[#D5D0C5] block mb-1">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-[#8C8477] absolute left-3 top-3" />
+                <Mail className="w-4 h-4 text-[#8C8477] dark:text-[#A8A29E] absolute left-3 top-3" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-[#FAF9F6] border border-[#D5D0C5] rounded-xs focus:outline-none focus:border-[#C85A32] focus:bg-white"
+                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-[#FAF9F6] dark:bg-[#1E1E1E] border border-[#D5D0C5] dark:border-[#333] rounded-xs focus:outline-none focus:border-[#C85A32] focus:bg-white dark:focus:bg-[#1A1A1A] text-neutral-900 dark:text-[#F5F3EF]"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-[#7A7264] block mb-1">
+              <label className="text-[11px] font-semibold text-[#7A7264] dark:text-[#D5D0C5] block mb-1">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-[#8C8477] absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-[#8C8477] dark:text-[#A8A29E] absolute left-3 top-3" />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-[#FAF9F6] border border-[#D5D0C5] rounded-xs focus:outline-none focus:border-[#C85A32] focus:bg-white"
+                  className="w-full pl-9 pr-3 py-2.5 text-xs bg-[#FAF9F6] dark:bg-[#1E1E1E] border border-[#D5D0C5] dark:border-[#333] rounded-xs focus:outline-none focus:border-[#C85A32] focus:bg-white dark:focus:bg-[#1A1A1A] text-neutral-900 dark:text-[#F5F3EF]"
                   required
                   minLength={6}
                 />
@@ -211,7 +211,7 @@ export const AuthModal: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#1F1F1F] hover:bg-black text-white py-3 font-semibold text-xs rounded-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 mt-2"
+              className="w-full bg-[#1F1F1F] dark:bg-[#F5F3EF] hover:bg-black dark:hover:bg-white text-white dark:text-[#1F1F1F] py-3 font-semibold text-xs rounded-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 mt-2"
             >
               {isLoading ? (
                 <span>Authenticating with Firebase...</span>
@@ -230,14 +230,14 @@ export const AuthModal: React.FC = () => {
           </form>
 
           {/* Footer Toggle */}
-          <div className="pt-2 text-center text-xs text-[#7A7264]">
+          <div className="pt-2 text-center text-xs text-[#7A7264] dark:text-[#A8A29E]">
             {authMode === 'login' ? (
               <p>
                 Don't have an account?{' '}
                 <button
                   type="button"
                   onClick={() => { setAuthMode('register'); setAuthError(''); }}
-                  className="text-[#C85A32] font-semibold hover:underline cursor-pointer"
+                  className="text-[#C85A32] dark:text-[#E87A54] font-semibold hover:underline cursor-pointer"
                 >
                   Create one now
                 </button>
@@ -248,7 +248,7 @@ export const AuthModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => { setAuthMode('login'); setAuthError(''); }}
-                  className="text-[#C85A32] font-semibold hover:underline cursor-pointer"
+                  className="text-[#C85A32] dark:text-[#E87A54] font-semibold hover:underline cursor-pointer"
                 >
                   Sign in here
                 </button>
