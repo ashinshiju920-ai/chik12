@@ -222,7 +222,13 @@
   html.dark .bg-\[\#FAF9F6\],
   html.dark .bg-\[\#FBFBF9\],
   html.dark .bg-\[\#F5F4F0\],
-  html.dark .bg-\[\#F0ECE1\] {
+  html.dark .bg-\[\#F0ECE1\],
+  html.dark .bg-\[\#F5F3EF\],
+  html.dark .bg-\[\#f7f7f7\],
+  html.dark .bg-neutral-50,
+  html.dark .bg-neutral-100,
+  html.dark .bg-slate-50,
+  html.dark .bg-slate-100 {
     background-color: #131313 !important;
   }
   html.dark .bg-\[\#FAF1ED\] {
@@ -239,16 +245,35 @@
   html.dark .border-\[\#F0ECE1\],
   html.dark .border-\[\#E5E0D8\],
   html.dark .border-\[\#E0DDD5\],
-  html.dark .border-\[\#D5D0C5\] {
+  html.dark .border-\[\#E0DCD3\],
+  html.dark .border-\[\#D5D0C5\],
+  html.dark .border-neutral-100,
+  html.dark .border-neutral-200 {
     border-color: #282828 !important;
   }
   html.dark .text-\[\#1F1F1F\],
   html.dark .text-\[\#1A1918\],
   html.dark .text-\[\#141414\],
   html.dark .text-black,
+  html.dark .text-neutral-950,
+  html.dark .text-neutral-900,
+  html.dark .text-neutral-800,
+  html.dark .text-slate-950,
   html.dark .text-slate-900,
-  html.dark .text-neutral-900 {
+  html.dark .text-slate-800,
+  html.dark .text-gray-950,
+  html.dark .text-gray-900,
+  html.dark .text-gray-800,
+  html.dark .text-zinc-950,
+  html.dark .text-zinc-900,
+  html.dark .text-zinc-800 {
     color: #F5F3EF !important;
+  }
+  html.dark .text-neutral-700,
+  html.dark .text-slate-700,
+  html.dark .text-gray-700,
+  html.dark .text-zinc-700 {
+    color: #D5D0C5 !important;
   }
   html.dark .text-\[\#4A453C\],
   html.dark .text-\[\#555048\],
@@ -259,10 +284,16 @@
   html.dark .text-\[\#827A6D\],
   html.dark .text-\[\#8C8477\],
   html.dark .text-\[\#8C8275\],
+  html.dark .text-\[\#9E978C\],
   html.dark .text-slate-600,
   html.dark .text-slate-500,
+  html.dark .text-slate-400,
   html.dark .text-neutral-600,
-  html.dark .text-neutral-500 {
+  html.dark .text-neutral-500,
+  html.dark .text-neutral-400,
+  html.dark .text-gray-600,
+  html.dark .text-gray-500,
+  html.dark .text-gray-400 {
     color: #A8A29E !important;
   }
   html.dark input:not([type="checkbox"]):not([type="radio"]),

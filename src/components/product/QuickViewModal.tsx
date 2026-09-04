@@ -87,12 +87,12 @@ export const QuickViewModal: React.FC = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="relative bg-white rounded-xl border border-[#EAE6DE] shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh] z-10 my-auto custom-scrollbar"
+            className="relative bg-white dark:bg-[#161616] rounded-xl border border-[#EAE6DE] dark:border-[#282828] shadow-2xl w-full max-w-3xl overflow-y-auto max-h-[90vh] z-10 my-auto custom-scrollbar"
           >
           {/* Close button */}
           <button
             onClick={handleClose}
-            className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#1F1F1F] shadow-sm flex items-center justify-center transition-colors cursor-pointer"
+            className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-[#222]/90 hover:bg-white dark:hover:bg-[#333] text-[#1F1F1F] dark:text-[#F5F3EF] shadow-sm flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -100,8 +100,8 @@ export const QuickViewModal: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2">
             {/* Gallery Column */}
-            <div className="bg-[#FAF9F6] p-6 flex flex-col justify-between">
-              <div className="relative aspect-square w-full bg-white rounded-xs overflow-hidden border border-[#EAE6DE]">
+            <div className="bg-[#FAF9F6] dark:bg-[#1C1C1C] p-6 flex flex-col justify-between">
+              <div className="relative aspect-square w-full bg-white dark:bg-[#161616] rounded-xs overflow-hidden border border-[#EAE6DE] dark:border-[#282828]">
                 <img
                   src={quickViewProduct.images[activeImageIndex] || quickViewProduct.images[0]}
                   alt={quickViewProduct.name}
@@ -130,7 +130,7 @@ export const QuickViewModal: React.FC = () => {
                       key={idx}
                       onClick={() => setActiveImageIndex(idx)}
                       className={`w-14 h-14 rounded-xs border overflow-hidden shrink-0 cursor-pointer ${
-                        activeImageIndex === idx ? 'border-[#C85A32] ring-1 ring-[#C85A32]' : 'border-[#EAE6DE]'
+                        activeImageIndex === idx ? 'border-[#C85A32] ring-1 ring-[#C85A32]' : 'border-[#EAE6DE] dark:border-[#333]'
                       }`}
                     >
                       <img src={img} alt="thumb" className="w-full h-full object-cover" />
@@ -143,11 +143,11 @@ export const QuickViewModal: React.FC = () => {
             {/* Info & Purchase Column */}
             <div className="p-6 md:p-8 flex flex-col justify-between space-y-4">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#C85A32]">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#C85A32] dark:text-[#E87A54]">
                   {quickViewProduct.categoryTag || `#${quickViewProduct.category}`}
                 </span>
 
-                <h2 className="product-title font-product text-xl font-semibold text-[#1F1F1F] mt-1 leading-snug">
+                <h2 className="product-title font-product text-xl font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] mt-1 leading-snug antialiased">
                   {quickViewProduct.name}
                 </h2>
 
@@ -158,45 +158,45 @@ export const QuickViewModal: React.FC = () => {
                       <Star
                         key={i}
                         className={`w-3.5 h-3.5 ${
-                          i < Math.floor(quickViewProduct.rating) ? 'fill-[#FBC02D]' : 'text-[#E0DDD5]'
+                          i < Math.floor(quickViewProduct.rating) ? 'fill-[#FBC02D]' : 'text-[#E0DDD5] dark:text-[#444]'
                         }`}
                       />
                     ))}
                   </div>
-                  <span className="text-xs text-[#8C8477]">
+                  <span className="text-xs text-[#8C8477] dark:text-[#A8A29E]">
                     {quickViewProduct.rating} ({quickViewProduct.reviewCount} reviews)
                   </span>
                 </div>
 
                 {/* Price */}
-                <div className="flex flex-col gap-1 mt-3 bg-[#FAF9F6] p-2.5 rounded-xs border border-[#EAE6DE]">
+                <div className="flex flex-col gap-1 mt-3 bg-[#FAF9F6] dark:bg-[#1E1E1E] p-2.5 rounded-xs border border-[#EAE6DE] dark:border-[#282828]">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-bold text-[#1E5638] font-mono">
+                    <span className="text-lg font-bold text-[#1E5638] dark:text-[#4ADE80] font-mono">
                       {formatPrice(quickViewProduct.price * (1 - (onlineDiscountPercent / 100)))}
                     </span>
-                    <span className="text-[10px] bg-green-100 text-[#1E5638] font-bold px-1.5 py-0.5 rounded-xs uppercase">
+                    <span className="text-[10px] bg-green-100 dark:bg-green-950/60 text-[#1E5638] dark:text-green-300 font-bold px-1.5 py-0.5 rounded-xs uppercase">
                       {onlineDiscountPercent}% Instant Online OFF
                     </span>
                   </div>
-                  <div className="text-[11px] text-[#7A7264] flex items-center gap-2">
-                    <span>COD Price: <strong className="text-[#1F1F1F]">{formatPrice(quickViewProduct.price)}</strong></span>
+                  <div className="text-[11px] text-[#7A7264] dark:text-[#A8A29E] flex items-center gap-2">
+                    <span>COD Price: <strong className="text-[#1F1F1F] dark:text-[#F5F3EF]">{formatPrice(quickViewProduct.price)}</strong></span>
                     {quickViewProduct.originalPrice && quickViewProduct.originalPrice > quickViewProduct.price && (
-                      <span className="line-through text-[#9E978C]">
+                      <span className="line-through text-[#9E978C] dark:text-[#7A756C]">
                         {formatPrice(quickViewProduct.originalPrice)}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <p className="text-xs text-[#6E685F] mt-3 line-clamp-3 leading-relaxed">
+                <p className="text-xs text-[#6E685F] dark:text-[#A8A29E] mt-3 line-clamp-3 leading-relaxed">
                   {quickViewProduct.description}
                 </p>
 
                 {/* Color Variants */}
                 {quickViewProduct.colors && quickViewProduct.colors.length > 0 && (
                   <div className="mt-4">
-                    <div className="text-[11px] font-semibold text-[#1F1F1F] mb-1.5">
-                      Color: <span className="font-normal text-[#6E685F]">{selectedColor}</span>
+                    <div className="text-[11px] font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] mb-1.5">
+                      Color: <span className="font-normal text-[#6E685F] dark:text-[#A8A29E]">{selectedColor}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {quickViewProduct.colors.map((c) => (
@@ -204,7 +204,7 @@ export const QuickViewModal: React.FC = () => {
                           key={c.name}
                           onClick={() => setSelectedColor(c.name)}
                           className={`w-6 h-6 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center ${
-                            selectedColor === c.name ? 'border-[#1F1F1F] scale-110' : 'border-white ring-1 ring-black/10'
+                            selectedColor === c.name ? 'border-[#1F1F1F] dark:border-white scale-110' : 'border-white dark:border-[#333] ring-1 ring-black/10'
                           }`}
                           style={{ backgroundColor: c.hex }}
                           title={c.name}
@@ -221,8 +221,8 @@ export const QuickViewModal: React.FC = () => {
                 {/* Size Variants */}
                 {quickViewProduct.sizes && quickViewProduct.sizes.length > 0 && (
                   <div className="mt-3">
-                    <div className="text-[11px] font-semibold text-[#1F1F1F] mb-1.5">
-                      Size: <span className="font-normal text-[#6E685F]">{selectedSize}</span>
+                    <div className="text-[11px] font-semibold text-[#1F1F1F] dark:text-[#F5F3EF] mb-1.5">
+                      Size: <span className="font-normal text-[#6E685F] dark:text-[#A8A29E]">{selectedSize}</span>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {quickViewProduct.sizes.map((s) => (
@@ -231,8 +231,8 @@ export const QuickViewModal: React.FC = () => {
                           onClick={() => setSelectedSize(s)}
                           className={`px-2.5 py-1 text-xs font-semibold rounded-xs border transition-all cursor-pointer ${
                             selectedSize === s
-                              ? 'border-[#C85A32] bg-[#FAF1ED] text-[#C85A32]'
-                              : 'border-[#E0DCD3] bg-white text-[#4A453C] hover:border-[#1F1F1F]'
+                              ? 'border-[#C85A32] bg-[#FAF1ED] dark:bg-[#C85A32]/20 text-[#C85A32] dark:text-[#E87A54]'
+                              : 'border-[#E0DCD3] dark:border-[#333] bg-white dark:bg-[#222] text-[#4A453C] dark:text-[#D5D0C5] hover:border-[#1F1F1F] dark:hover:border-white'
                           }`}
                         >
                           {s}
@@ -244,7 +244,7 @@ export const QuickViewModal: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-2 pt-2 border-t border-[#F0ECE1]">
+              <div className="space-y-2 pt-2 border-t border-[#F0ECE1] dark:border-[#282828]">
                 {/* CUSTOM RED MODERN BUY NOW BUTTON */}
                 <button
                   id={`modal-buy-now-${quickViewProduct.id}`}
@@ -260,7 +260,7 @@ export const QuickViewModal: React.FC = () => {
                   <button
                     onClick={handleAddBag}
                     disabled={isOutOfStock}
-                    className="flex-1 bg-[#1F1F1F] hover:bg-[#333333] text-white text-xs font-semibold uppercase tracking-wider py-2.5 rounded-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-gray-300"
+                    className="flex-1 bg-[#1F1F1F] dark:bg-[#F5F3EF] hover:bg-[#333333] dark:hover:bg-[#EAE6DE] text-white dark:text-[#1F1F1F] text-xs font-semibold uppercase tracking-wider py-2.5 rounded-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:bg-gray-300"
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />
                     <span>Add to Bag</span>
@@ -270,8 +270,8 @@ export const QuickViewModal: React.FC = () => {
                     onClick={() => toggleWishlist(quickViewProduct.id)}
                     className={`w-10 h-10 rounded-xs border flex items-center justify-center transition-colors cursor-pointer ${
                       isSaved
-                        ? 'bg-[#FAF1ED] border-[#C85A32] text-[#C85A32]'
-                        : 'border-[#E0DCD3] text-[#1F1F1F] bg-white hover:border-[#1F1F1F]'
+                        ? 'bg-[#FAF1ED] dark:bg-[#C85A32]/20 border-[#C85A32] text-[#C85A32] dark:text-[#E87A54]'
+                        : 'border-[#E0DCD3] dark:border-[#333] text-[#1F1F1F] dark:text-[#F5F3EF] bg-white dark:bg-[#222] hover:border-[#1F1F1F] dark:hover:border-white'
                     }`}
                     title={isSaved ? 'Remove from wishlist' : 'Save to wishlist'}
                   >
@@ -281,7 +281,7 @@ export const QuickViewModal: React.FC = () => {
 
                 <button
                   onClick={handleFullDetail}
-                  className="w-full text-center text-xs text-[#8C8477] hover:text-[#C85A32] underline pt-1 cursor-pointer flex items-center justify-center gap-1"
+                  className="w-full text-center text-xs text-[#8C8477] dark:text-[#A8A29E] hover:text-[#C85A32] dark:hover:text-[#E87A54] underline pt-1 cursor-pointer flex items-center justify-center gap-1"
                 >
                   <span>View Full Product Specifications</span>
                   <ArrowRight className="w-3 h-3" />
