@@ -18,7 +18,6 @@ import {
   Printer,
   Package,
   Clock,
-  Sparkles,
   AlertCircle,
   HelpCircle,
   ChevronDown,
@@ -76,8 +75,8 @@ export const CheckoutView: React.FC = () => {
   // Mobile Order Summary Accordion
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
-  // Packaging selection (Eco Friendly vs. DivaChic Signature)
-  const [packagingOption, setPackagingOption] = useState<'eco' | 'signature'>('eco');
+  // Standard Packaging (zero extra fee)
+  const packagingOption = 'Standard';
 
   // Gift Option
   const [isGift, setIsGift] = useState(false);
@@ -154,7 +153,7 @@ export const CheckoutView: React.FC = () => {
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const COD_SHIPPING_FEE = 150;
   const shippingFee = paymentMethod === 'ONLINE' ? 0 : COD_SHIPPING_FEE;
-  const packagingFee = packagingOption === 'signature' ? (subtotal >= 2999 ? 0 : 150) : 0;
+  const packagingFee = 0;
   const discountAmount = cartDiscount || 0;
   const finalPayable = Math.max(0, subtotal + shippingFee + packagingFee - discountAmount);
 
@@ -1173,78 +1172,6 @@ export const CheckoutView: React.FC = () => {
               >
                 CONTINUE TO SELECT PAYMENT METHOD
               </button>
-            </div>
-          </div>
-
-          {/* SECTION: PACKAGING (Image 1 style: Eco Friendly vs. Signature) */}
-          <div className="pt-6 border-t border-neutral-200 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-900 font-serif">
-              PACKAGING
-            </h3>
-
-            <div className="space-y-3">
-              {/* Option 1: Eco Friendly ($0 / ₹0) */}
-              <div
-                onClick={() => setPackagingOption('eco')}
-                className={`p-4 border cursor-pointer flex items-center justify-between gap-4 transition-all active:scale-[0.99] ${
-                  packagingOption === 'eco'
-                    ? 'border-neutral-900 bg-neutral-50/70 ring-1 ring-neutral-900'
-                    : 'border-neutral-200 hover:border-neutral-400 bg-white'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-amber-50 border border-amber-200/70 flex items-center justify-center shrink-0">
-                    <Package className="w-6 h-6 text-amber-800 stroke-[1.5]" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-neutral-900 font-serif">
-                        Eco Friendly
-                      </span>
-                      <span className="text-[11px] text-neutral-500">({cartCount} {cartCount === 1 ? 'item' : 'items'})</span>
-                    </div>
-                    <p className="text-[11px] text-neutral-500 mt-0.5 font-serif">
-                      Have your order shipped with environmentally friendly packaging.
-                    </p>
-                  </div>
-                </div>
-                <div className="text-xs font-bold font-serif text-neutral-900 shrink-0">
-                  ₹0
-                </div>
-              </div>
-
-              {/* Option 2: DivaChic Signature ($7.50 / ₹150) */}
-              <div
-                onClick={() => setPackagingOption('signature')}
-                className={`p-4 border cursor-pointer flex items-center justify-between gap-4 transition-all active:scale-[0.99] ${
-                  packagingOption === 'signature'
-                    ? 'border-neutral-900 bg-neutral-50/70 ring-1 ring-neutral-900'
-                    : 'border-neutral-200 hover:border-neutral-400 bg-white'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-neutral-900 border border-neutral-900 flex items-center justify-center shrink-0 shadow-xs">
-                    <Sparkles className="w-6 h-6 text-amber-300 stroke-[1.5]" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-neutral-900 font-serif">
-                        BG Signature Couture Packaging
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-neutral-500 mt-0.5 font-serif">
-                      Have your order delivered in DivaChic's signature atelier packaging. Complimentary for orders over ₹2,999.
-                    </p>
-                  </div>
-                </div>
-                <div className="text-xs font-bold font-serif text-neutral-900 shrink-0">
-                  {subtotal >= 2999 ? (
-                    <span className="text-emerald-700">₹0 <span className="text-[10px] line-through text-neutral-400">₹150</span></span>
-                  ) : (
-                    '₹150'
-                  )}
-                </div>
-              </div>
             </div>
           </div>
 
