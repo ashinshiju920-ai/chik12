@@ -569,19 +569,51 @@ export const ProductDetailView: React.FC = () => {
               </div>
             </div>
 
-            {/* Micro Trust Indicators */}
-            <div className="grid grid-cols-3 gap-2 pt-2 text-[11px] text-[#736C61] border-t border-[#F0ECE1]">
-              <div className="flex items-center gap-1.5">
-                <Truck className="w-3.5 h-3.5 text-[#C85A32]" />
-                <span>Fast Dispatch</span>
+            {/* Shiprocket Delivery & 7-Day Free Home Pickup Returns Trust Guarantee Card */}
+            <div className="bg-[#FAF9F6] border border-[#EAE6DE] p-3.5 rounded-xs space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="bg-[#2e0954] p-1.5 rounded-md border border-purple-300/30 shrink-0 shadow-xs flex items-center justify-center">
+                    <img
+                      src="/shiprocket-logo.png"
+                      alt="Shiprocket Delivery Partner"
+                      className="h-7 w-auto object-contain"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-[#1F1F1F] font-serif block">
+                      Delivery Done by Shiprocket
+                    </span>
+                    <span className="text-[11px] text-[#1E5638] font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                      Free Home Pickup on Returns (Up to 7 Days)
+                    </span>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <span className="text-[10px] font-bold bg-[#EBF5EF] text-[#1E5638] px-2 py-0.5 rounded-xs uppercase tracking-wider">
+                    Zero Return Fee
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#C85A32]" />
-                <span>Original Nordic</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <RotateCcw className="w-3.5 h-3.5 text-[#C85A32]" />
-                <span>7-Day Returns</span>
+
+              <p className="text-[11px] text-[#6E685F] font-serif leading-relaxed">
+                Every order is fulfilled with express insured courier by <strong>Shiprocket</strong>. If you are not 100% delighted, we arrange a <strong>Free Doorstep Pickup right from your home</strong> within 7 days.
+              </p>
+
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[#EAE6DE] text-[10px] sm:text-[11px] text-[#555048] font-serif">
+                <div className="flex items-center gap-1.5">
+                  <Truck className="w-3.5 h-3.5 text-[#C85A32] shrink-0" />
+                  <span>Shiprocket Express</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>Free Home Pickup</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#C85A32] shrink-0" />
+                  <span>100% Insured</span>
+                </div>
               </div>
             </div>
 

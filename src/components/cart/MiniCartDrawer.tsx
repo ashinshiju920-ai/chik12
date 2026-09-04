@@ -235,6 +235,11 @@ export const MiniCartDrawer: React.FC = () => {
                 >
                   View Full Bag
                 </button>
+
+                <div className="pt-2 flex items-center justify-center gap-1.5 text-[10px] text-[#555048] border-t border-[#EAE6DE]">
+                  <img src="/shiprocket-logo.png" alt="Shiprocket" className="h-3.5 w-auto object-contain rounded-xs" />
+                  <span>Delivery by <strong>Shiprocket</strong> • Free 7-Day Home Returns</span>
+                </div>
               </div>
             </div>
           )}

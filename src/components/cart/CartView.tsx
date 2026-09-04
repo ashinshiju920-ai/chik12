@@ -352,10 +352,21 @@ export const CartView: React.FC = () => {
                 </button>
               </div>
 
-              {/* Trust Badge */}
-              <div className="pt-3 border-t border-[#F0ECE1] flex items-center justify-center gap-2 text-[11px] text-[#8C8477]">
-                <ShieldCheck className="w-4 h-4 text-[#1E5638]" />
-                <span>Encrypted 256-bit SSL Checkout</span>
+              {/* Shiprocket Delivery & 7-Day Return Trust Guarantee */}
+              <div className="pt-3 border-t border-[#F0ECE1] space-y-2">
+                <div className="flex items-center gap-2.5 p-2 bg-[#FAF9F6] border border-[#EAE6DE] rounded-xs">
+                  <div className="bg-[#2e0954] p-1 rounded-xs shrink-0 flex items-center justify-center">
+                    <img src="/shiprocket-logo.png" alt="Shiprocket Delivery Partner" className="h-5 w-auto object-contain" />
+                  </div>
+                  <div className="text-[10px] text-[#555048] leading-tight">
+                    <strong className="text-[#1F1F1F] block">Delivery Done by Shiprocket</strong>
+                    <span className="text-[#1E5638] font-medium">Free Home Pickup on Returns (Up to 7 Days)</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-[11px] text-[#8C8477]">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#1E5638]" />
+                  <span>Encrypted 256-Bit SSL Checkout</span>
+                </div>
               </div>
 
             </div>

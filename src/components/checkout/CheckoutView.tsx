@@ -805,7 +805,9 @@ export const CheckoutView: React.FC = () => {
           Earn a ₹500 - ₹2,500 Gift Voucher with code <strong className="font-sans font-bold underline tracking-wider cursor-pointer" onClick={() => { setPromoOpen(true); setPromoInput('DIVAGIFT'); }}>DIVAGIFT</strong> <span className="underline cursor-pointer ml-1 text-neutral-300 hover:text-white" onClick={() => setPromoOpen(true)}>Details</span>
         </span>
         <span className="mx-3 text-neutral-600 hidden sm:inline">|</span>
-        <span className="text-neutral-300 hidden sm:inline font-serif text-xs">Complimentary Express Delivery Over ₹2,999</span>
+        <span className="text-neutral-300 hidden sm:inline font-serif text-xs">
+          🚀 Delivery Done by Shiprocket • 🔄 Free Doorstep Return Pickup (Up to 7 Days)
+        </span>
       </div>
 
       {/* 2b. MOBILE ORDER SUMMARY ACCORDION (Shopify / Bergdorf luxury mobile standard) */}
@@ -1612,40 +1614,56 @@ export const CheckoutView: React.FC = () => {
               You can review and confirm your order in the next step
             </p>
 
-            {/* CASHFREE OFFICIAL TRUST CARD */}
-            <div className="bg-[#FAF9F6] border border-neutral-200 p-4 space-y-3">
+            {/* OFFICIAL LOGISTICS & PAYMENT TRUST CARD */}
+            <div className="bg-[#FAF9F6] border border-neutral-200 p-4 space-y-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-600 font-serif">
-                  PAYMENT SECURITY
+                  VERIFIED TRUST & FULFILLMENT
                 </span>
                 <div className="flex items-center gap-1 text-[10px] text-emerald-800 font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Verified Safe</span>
+                  <span>100% Guaranteed</span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="bg-[#120F24] px-3 py-1.5 rounded-xs border border-[#2A2347] flex items-center shadow-xs">
+              {/* Shiprocket Delivery & Returns Badge */}
+              <div className="flex items-center gap-3 p-2 bg-white rounded-xs border border-neutral-200/80">
+                <div className="bg-[#2e0954] p-1.5 rounded-xs border border-purple-300/30 flex items-center shadow-xs shrink-0">
+                  <img
+                    src="/shiprocket-logo.png"
+                    alt="Shiprocket Official Delivery Partner"
+                    className="h-6 w-auto object-contain"
+                  />
+                </div>
+                <div className="text-[10px] text-neutral-600 font-serif leading-tight">
+                  <strong className="text-neutral-900 block font-sans text-[11px]">Delivery Done by Shiprocket</strong>
+                  <span className="text-emerald-700 font-semibold">Free Doorstep Pickup on Returns (Up to 7 Days)</span>
+                </div>
+              </div>
+
+              {/* Cashfree Payment Gateway Badge */}
+              <div className="flex items-center gap-3 p-2 bg-white rounded-xs border border-neutral-200/80">
+                <div className="bg-[#120F24] px-2.5 py-1.5 rounded-xs border border-[#2A2347] flex items-center shadow-xs shrink-0">
                   <img
                     src="/cashfree-payments.png"
                     alt="Cashfree Payments Verified Partner"
                     className="h-5 w-auto object-contain"
                   />
                 </div>
-                <div className="text-[10px] text-neutral-500 font-serif leading-tight">
-                  <strong className="text-neutral-800 block">100% RBI Authorized</strong>
-                  Bank-Grade 256-Bit SSL Secured
+                <div className="text-[10px] text-neutral-600 font-serif leading-tight">
+                  <strong className="text-neutral-900 block font-sans text-[11px]">100% RBI Authorized Cashfree</strong>
+                  Bank-Grade 256-Bit SSL Instant Verification
                 </div>
               </div>
 
               <div className="pt-2 border-t border-neutral-200/60 flex items-center justify-between text-[10px] text-neutral-500 font-serif">
                 <div className="flex items-center gap-1">
                   <Clock className="w-3 h-3 text-neutral-700" />
-                  <span>Est. Dispatch: 24-48 Hours</span>
+                  <span>Dispatches in 24-48 Hours</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Truck className="w-3 h-3 text-neutral-700" />
-                  <span>Insured Express</span>
+                  <span>Insured Express Courier</span>
                 </div>
               </div>
             </div>

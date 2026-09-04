@@ -218,9 +218,20 @@ export const Footer: React.FC = () => {
             </button>
           </p>
           
-          <div className="flex items-center space-x-3 flex-wrap justify-center sm:justify-end gap-y-2">
-            <span className="text-[11px] font-medium tracking-wide">SECURE PAYMENTS:</span>
-            <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 flex-wrap justify-center sm:justify-end gap-y-2">
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <span className="text-[11px] font-medium tracking-wide">FULFILLMENT:</span>
+              <div className="px-2 py-1 bg-[#2e0954] border border-purple-400/30 rounded-xs flex items-center h-6 gap-1" title="Delivery Done by Shiprocket">
+                <img src="/shiprocket-logo.png" alt="Shiprocket Delivery Partner" className="h-3.5 w-auto object-contain" />
+                <span className="text-[9px] font-bold text-white tracking-tight">Shiprocket</span>
+              </div>
+              <span className="px-2 py-0.5 bg-[#EBF5EF] border border-[#C6E6D1] rounded-xs font-semibold text-[9px] text-[#1E5638]">
+                FREE 7-DAY HOME PICKUP RETURNS
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <span className="text-[11px] font-medium tracking-wide">SECURE PAYMENTS:</span>
               <div className="px-2 py-1 bg-[#120F24] border border-[#2A2347] rounded-xs flex items-center h-6">
                 <img src="/cashfree-payments.png" alt="Cashfree Payments" className="h-3.5 w-auto object-contain" />
               </div>
