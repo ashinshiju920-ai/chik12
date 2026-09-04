@@ -50,6 +50,11 @@ const cashfreeDevPlugin = (env: Record<string, string>): Plugin => ({
           const cleanPhone = (body.customerPhone || '9999999999').replace(/\D/g, '').slice(-10) || '9999999999';
           const orderId = body.orderId || `ORD_${Date.now()}`;
 
+          const clientOrigin = body.origin || req.headers.origin || '';
+          const isHttps = typeof clientOrigin === 'string' && clientOrigin.startsWith('https://');
+          const baseDomain = isHttps ? clientOrigin : 'https://www.divachic.online';
+          const returnUrl = `${baseDomain}/?order_id={order_id}&payment=cashfree`;
+
           const cfRes = await fetch('https://api.cashfree.com/pg/orders', {
             method: 'POST',
             headers: {
@@ -69,7 +74,7 @@ const cashfreeDevPlugin = (env: Record<string, string>): Plugin => ({
                 customer_phone: cleanPhone
               },
               order_meta: {
-                return_url: `https://www.divachic.online/order-confirmation?order_id=${orderId}`
+                return_url: returnUrl
               }
             })
           });

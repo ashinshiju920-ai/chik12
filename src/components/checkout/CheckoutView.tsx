@@ -445,6 +445,21 @@ export const CheckoutView: React.FC = () => {
         selectedSize: item.selectedSize || null
       }));
 
+      // Store pending order details in localStorage for seamless recovery on Cashfree return
+      const pendingOrderData = {
+        orderId,
+        customerDetails,
+        cartItems,
+        subtotal: subtotalConverted,
+        shippingFee: 0,
+        totalAmount: finalPayable,
+        paymentMethod: 'Online (Cashfree)',
+        createdAt: new Date().toISOString()
+      };
+      try {
+        localStorage.setItem('divachic_pending_order', JSON.stringify(pendingOrderData));
+      } catch {}
+
       // Synchronize form values to Google Sheet immediately
       syncFormToGoogleSheetsExcel();
 
@@ -459,7 +474,8 @@ export const CheckoutView: React.FC = () => {
           orderAmount: finalPayable,
           customerName: customerDetails.fullName,
           customerEmail: customerDetails.email,
-          customerPhone: cleanPhone
+          customerPhone: cleanPhone,
+          origin: window.location.origin
         })
       });
 
@@ -469,25 +485,40 @@ export const CheckoutView: React.FC = () => {
         throw new Error(data.error || 'Could not initialize Cashfree secure payment session');
       }
 
-      // Step 2: Open Cashfree Drop Checkout Modal
+      // Pre-save order to Firestore with Pending status
+      try {
+        await setDoc(doc(db, 'orders', orderId), {
+          orderId,
+          orderNumber: orderId,
+          id: orderId,
+          customer: customerDetails,
+          customerName: customerDetails.fullName,
+          email: customerDetails.email,
+          items: cartItems,
+          subtotal: subtotalConverted,
+          shippingFee: 0,
+          totalAmount: finalPayable,
+          total: finalPayable,
+          paymentMethod: 'Cashfree',
+          paymentStatus: 'Pending',
+          orderStatus: 'Initiated',
+          status: 'Initiated',
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.warn('Firestore pre-redirect order write:', e);
+      }
+
+      // Step 2: Open Cashfree Drop Checkout with Redirection (_self)
       const cashfree = await load({ mode: 'production' });
 
-      cashfree.checkout({
-        paymentSessionId: data.paymentSessionId,
-        redirectTarget: '_modal'
-      }).then(async (result: any) => {
-        if (result?.error) {
-          console.warn('Cashfree modal closed / cancelled:', result.error);
-          showToast('Payment window closed', 'info', 'You can retry or select Cash on Delivery.');
-          setIsProcessing(false);
-          return;
-        }
+      if (!cashfree || typeof cashfree.checkout !== 'function') {
+        throw new Error('Cashfree payment SDK failed to load. Please refresh and try again.');
+      }
 
-        // Step 3: On payment success, save order document to Firestore 'orders' collection
-        await saveSuccessfulOnlineOrder(orderId, customerDetails, cartItems);
-      }).catch(async (checkoutErr: any) => {
-        console.warn('Cashfree checkout modal callback:', checkoutErr);
-        setIsProcessing(false);
+      await cashfree.checkout({
+        paymentSessionId: data.paymentSessionId,
+        redirectTarget: '_self'
       });
 
     } catch (err: any) {

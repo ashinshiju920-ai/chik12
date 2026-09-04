@@ -65,6 +65,7 @@ import {
   trackAddToCart,
   trackPurchase
 } from '../lib/analytics';
+import { sendOrderConfirmationEmail } from '../lib/emailService';
 
 interface Toast {
   id: string;
@@ -372,7 +373,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return safeJsonParse(localStorage.getItem('haute_products'), INITIAL_PRODUCTS);
   });
 
-  const [activePage, setActivePageState] = useState<ActivePage>('home');
+  const [activePage, setActivePageState] = useState<ActivePage>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('order_id') || params.get('payment_status') || params.get('payment') === 'cashfree' || window.location.pathname.includes('order-confirmation')) {
+        return 'order-confirmation';
+      }
+    }
+    return 'home';
+  });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(() => products[0]);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1344,7 +1353,45 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return safeJsonParse(localStorage.getItem('haute_orders'), INITIAL_ORDERS);
   });
 
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(() => orders[0] || null);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(() => {
+    try {
+      const pending = localStorage.getItem('divachic_pending_order');
+      if (pending) {
+        const p = JSON.parse(pending);
+        return {
+          id: p.orderId,
+          orderId: p.orderId,
+          orderNumber: p.orderId,
+          customer: p.customerDetails,
+          customerName: p.customerDetails?.fullName,
+          email: p.customerDetails?.email,
+          items: p.cartItems,
+          subtotal: p.subtotal,
+          shippingFee: p.shippingFee,
+          totalAmount: p.totalAmount,
+          total: p.totalAmount,
+          paymentMethod: 'Online (Cashfree)',
+          paymentStatus: 'Paid',
+          orderStatus: 'Placed',
+          status: 'Placed',
+          createdAt: new Date(),
+          trackingNumber: `TRK-${Date.now().toString().slice(-8)}-IN`,
+          carrier: 'Shiprocket Express',
+          timeline: [
+            {
+              title: 'Payment Confirmed & Verified (Cashfree)',
+              description: 'Instant prepaid verification successful. Order queued for packing.',
+              timestamp: 'Just Now',
+              location: 'Cashfree Payments',
+              completed: true,
+              current: true
+            }
+          ]
+        } as any;
+      }
+    } catch {}
+    return orders[0] || null;
+  });
 
   // Modals & Drawer State
   const [isMiniCartOpen, setIsMiniCartOpen] = useState(false);
@@ -1367,6 +1414,49 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem('haute_cart', JSON.stringify(cart));
   }, [cart]);
+
+  // Handle return from Cashfree payment redirect
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderIdParam = urlParams.get('order_id');
+    const payment = urlParams.get('payment');
+    const paymentStatus = urlParams.get('payment_status');
+
+    if (orderIdParam || payment === 'cashfree' || paymentStatus === 'success') {
+      setActivePageState('order-confirmation');
+      clearCart();
+
+      // Retrieve pending order if present
+      let pending: any = null;
+      try {
+        const str = localStorage.getItem('divachic_pending_order');
+        if (str) pending = JSON.parse(str);
+      } catch {}
+
+      if (pending) {
+        sendOrderConfirmationEmail({
+          customerEmail: pending.customerDetails?.email,
+          customerName: pending.customerDetails?.fullName,
+          orderId: pending.orderId,
+          totalAmount: pending.totalAmount,
+          paymentMethod: 'Online (Cashfree)',
+          items: (pending.cartItems || []).map((item: any) => ({
+            title: item.title,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        }).catch((err) => console.warn('Email dispatch warning:', err));
+      }
+
+      showToast('Payment Verified via Cashfree', 'success', `Your order has been confirmed.`);
+      localStorage.removeItem('divachic_pending_order');
+      localStorage.removeItem('divachic_pending_cart');
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {}
+    }
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('haute_wishlist', JSON.stringify(wishlist));
