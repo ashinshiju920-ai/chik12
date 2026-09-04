@@ -517,11 +517,11 @@ export const ProductDetailView: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-[#C85A32]" />
                   <span>
-                    Standard Delivery: <strong>{calculateDeliveryDate().formattedDate}</strong>
+                    Standard Delivery: <strong>{calculateDeliveryDate(0, selectedProduct.deliveryDays).formattedDate}</strong>
                   </span>
                 </div>
                 <span className="text-[11px] font-semibold bg-white text-[#C85A32] px-2 py-0.5 rounded-xs shadow-2xs">
-                  {standardDeliveryDays} Days Dispatch
+                  {selectedProduct.deliveryDays ?? standardDeliveryDays} Days Dispatch
                 </span>
               </div>
 

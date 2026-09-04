@@ -56,7 +56,7 @@ export const ShopCatalogView: React.FC = () => {
   const [priceMax, setPriceMax] = useState<number>(300);
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
   const [onSaleOnly, setOnSaleOnly] = useState<boolean>(false);
-  const [sortBy, setSortBy] = useState<'featured' | 'price-low' | 'price-high' | 'rating' | 'newest'>('featured');
+  const [sortBy, setSortBy] = useState<'featured' | 'bestsellers' | 'price-low' | 'price-high' | 'rating' | 'newest'>('featured');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 12;
@@ -131,7 +131,17 @@ export const ShopCatalogView: React.FC = () => {
         if (sortBy === 'price-high') return b.price - a.price;
         if (sortBy === 'rating') return (b.rating || 5) - (a.rating || 5);
         if (sortBy === 'newest') return (b.isNew || b.isNewArrival ? 1 : 0) - (a.isNew || a.isNewArrival ? 1 : 0);
-        return 0; // 'featured' keeps curated order
+        if (sortBy === 'bestsellers') {
+          const scoreA = (a.isBestSeller ? 1000 : 0) + (a.recentPurchasesCount || 0);
+          const scoreB = (b.isBestSeller ? 1000 : 0) + (b.recentPurchasesCount || 0);
+          if (scoreA !== scoreB) return scoreB - scoreA;
+          return (a.displayRank ?? 9999) - (b.displayRank ?? 9999);
+        }
+        // 'featured' / default: strictly honors admin custom displayRank order
+        const rankA = typeof a.displayRank === 'number' ? a.displayRank : 9999;
+        const rankB = typeof b.displayRank === 'number' ? b.displayRank : 9999;
+        if (rankA !== rankB) return rankA - rankB;
+        return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
       });
   }, [products, selectedCategory, searchQuery, priceMax, inStockOnly, onSaleOnly, sortBy]);
 
@@ -290,7 +300,8 @@ export const ShopCatalogView: React.FC = () => {
               onChange={(e) => setSortBy(e.target.value as any)}
               className="bg-[#FAF9F6] border border-[#D5D0C5] text-xs font-medium text-neutral-800 py-2.5 px-3 rounded-lg focus:outline-none focus:border-neutral-900"
             >
-              <option value="featured">Featured</option>
+              <option value="featured">Featured / Curated</option>
+              <option value="bestsellers">⭐ Best Sellers First</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
               <option value="rating">Top Rated</option>
@@ -428,6 +439,7 @@ export const ShopCatalogView: React.FC = () => {
               <div className="space-y-1 text-xs">
                 {[
                   { value: 'featured', label: 'Featured Curations' },
+                  { value: 'bestsellers', label: '⭐ Best Sellers First' },
                   { value: 'price-low', label: 'Price: Low to High' },
                   { value: 'price-high', label: 'Price: High to Low' },
                   { value: 'rating', label: 'Top Rated Pieces' },
@@ -664,6 +676,7 @@ export const ShopCatalogView: React.FC = () => {
                   <div className="grid grid-cols-1 gap-1.5">
                     {[
                       { value: 'featured', label: 'Featured Curations' },
+                      { value: 'bestsellers', label: '⭐ Best Sellers First' },
                       { value: 'price-low', label: 'Price: Low to High' },
                       { value: 'price-high', label: 'Price: High to Low' },
                       { value: 'rating', label: 'Top Customer Rated' },

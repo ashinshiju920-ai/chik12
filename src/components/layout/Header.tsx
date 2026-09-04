@@ -369,6 +369,23 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex flex-col space-y-3 font-medium text-sm">
+            {/* Quick Mobile Search Input Trigger */}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setIsSearchOpen(true);
+              }}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#FAF9F6] border border-[#EAE6DE] rounded-lg text-xs text-[#8C8477] hover:border-[#C85A32] hover:text-[#C85A32] transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-[#C85A32]" />
+                <span className="font-normal">Search products, collections, optics...</span>
+              </span>
+              <span className="text-[10px] bg-white border border-[#EAE6DE] px-1.5 py-0.5 rounded-xs font-mono">
+                SEARCH
+              </span>
+            </button>
+
             <button
               onClick={() => navigateTo('home')}
               className="text-left py-2 border-b border-[#F0ECE1] flex justify-between items-center"

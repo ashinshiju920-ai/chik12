@@ -80,6 +80,9 @@ export interface Product {
   customFont?: string; // e.g. "'Playfair Display', serif" or custom font
   customFontSize?: string; // e.g. "1rem" or "1.25rem"
   buyNowButtonColor?: string; // Hex color override for Buy Now button
+  displayRank?: number; // Manual priority rank set by admin (1 = top priority, 2, 3...)
+  isBestSeller?: boolean; // Whether the product is tagged as a Best Seller
+  deliveryDays?: number; // Delivery timeframe in days for this specific product (e.g. 2, 3, 5, 7)
   reviews: Review[];
 }
 

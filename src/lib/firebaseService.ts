@@ -103,6 +103,9 @@ export function subscribeToProducts(
               customFont: data.customFont,
               customFontSize: data.customFontSize,
               buyNowButtonColor: data.buyNowButtonColor,
+              displayRank: data.displayRank !== undefined ? Number(data.displayRank) : undefined,
+              isBestSeller: Boolean(data.isBestSeller),
+              deliveryDays: data.deliveryDays !== undefined ? Number(data.deliveryDays) : undefined,
               specifications: data.specifications || {
                 dimensions: 'Standard Cut',
                 materials: 'Bio-cellulose & Leather',
@@ -829,6 +832,52 @@ export async function updateFirestoreCategory(
     if (updates.quote) data.tagline = updates.quote;
 
     await setDoc(docRef, data, { merge: true });
+  }
+}
+
+// -------------------------------------------------------------
+// 10. REAL-TIME DELIVERY SETTINGS (settings/delivery)
+// -------------------------------------------------------------
+
+export interface DeliverySettings {
+  standardDeliveryDays: number;
+  onlineDiscountPercent?: number;
+  updatedAt?: any;
+}
+
+/**
+ * Subscribes to live delivery settings and courier timeframe from Firestore doc 'settings/delivery'.
+ */
+export function subscribeToDeliverySettings(
+  onUpdate: (data: DeliverySettings) => void
+): () => void {
+  try {
+    const docRef = doc(db, 'settings', 'delivery');
+    return onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        onUpdate(docSnap.data() as DeliverySettings);
+      }
+    }, (err) => console.warn('Firestore delivery onSnapshot warning:', err));
+  } catch {
+    return () => {};
+  }
+}
+
+/**
+ * Persists updated delivery timeframe and courier days to Firestore 'settings/delivery'.
+ */
+export async function saveDeliverySettingsToFirestore(
+  settings: Partial<DeliverySettings>
+): Promise<void> {
+  try {
+    const docRef = doc(db, 'settings', 'delivery');
+    await setDoc(docRef, {
+      ...settings,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.error('Error saving delivery settings to Firestore:', err);
+    throw err;
   }
 }
 

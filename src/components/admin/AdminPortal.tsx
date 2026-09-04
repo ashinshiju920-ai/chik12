@@ -163,12 +163,14 @@ export const AdminPortal: React.FC = () => {
     updateProductStock, 
     addProduct, 
     updateProduct,
+    updateProductRankings,
     deleteProduct, 
     addCoupon, 
     deleteCoupon,
     formatPrice, 
     standardDeliveryDays,
     setStandardDeliveryDays,
+    updateProductDeliveryDays,
     calculateDeliveryDate,
     showToast,
     setActivePage,
@@ -239,13 +241,30 @@ export const AdminPortal: React.FC = () => {
 
   // Layout & UI State
   const [activeTab, setActiveTab] = useState<AdminTab>('business');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [showRankingStudio, setShowRankingStudio] = useState(false);
+  const [rankingFilterCategory, setRankingFilterCategory] = useState<string>('all');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deliveryProductSearch, setDeliveryProductSearch] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [chartYear, setChartYear] = useState('2026');
+
+  // Auto-close sidebar on mobile view navigation
+  const handleTabSelect = (tab: AdminTab) => {
+    setActiveTab(tab);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   // Date Range Filter State for Dashboard & Analytics
   const [dateFilterRange, setDateFilterRange] = useState<
@@ -895,6 +914,11 @@ export const AdminPortal: React.FC = () => {
   // Individual Product "Buy Now" Button Color
   const [newProdBuyNowColor, setNewProdBuyNowColor] = useState('#DC2626');
 
+  // Individual Product Priority Rank & Best Seller Tag
+  const [newProdRank, setNewProdRank] = useState<number>(1);
+  const [newProdIsBestSeller, setNewProdIsBestSeller] = useState<boolean>(false);
+  const [newProdDeliveryDays, setNewProdDeliveryDays] = useState<number>(3);
+
   // Custom Reviews for Product
   const [newProdReviews, setNewProdReviews] = useState<Review[]>([]);
   const [revAuthor, setRevAuthor] = useState('');
@@ -927,6 +951,9 @@ export const AdminPortal: React.FC = () => {
       setNewProdCustomFont(existing.customFont || '');
       setNewProdCustomFontSize(existing.customFontSize || '');
       setNewProdBuyNowColor(existing.buyNowButtonColor || '#DC2626');
+      setNewProdRank(existing.displayRank !== undefined ? existing.displayRank : (products.indexOf(existing) + 1));
+      setNewProdIsBestSeller(existing.isBestSeller || false);
+      setNewProdDeliveryDays(existing.deliveryDays ?? standardDeliveryDays);
     } else {
       setEditingProduct(null);
       setNewProdName('');
@@ -950,8 +977,75 @@ export const AdminPortal: React.FC = () => {
       setNewProdCustomFont('');
       setNewProdCustomFontSize('');
       setNewProdBuyNowColor('#DC2626');
+      setNewProdRank(products.length + 1);
+      setNewProdIsBestSeller(false);
+      setNewProdDeliveryDays(standardDeliveryDays || 3);
     }
     setShowAddProduct(true);
+  };
+
+  // Storefront Product Ranking & Ordering Helpers
+  const handleMoveProductRank = async (productId: string, direction: 'up' | 'down') => {
+    const sorted = [...products].sort((a, b) => (a.displayRank ?? 9999) - (b.displayRank ?? 9999));
+    const currentIndex = sorted.findIndex((p) => p.id === productId);
+    if (currentIndex === -1) return;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+    const copy = [...sorted];
+    const [moved] = copy.splice(currentIndex, 1);
+    copy.splice(targetIndex, 0, moved);
+
+    await updateProductRankings(copy);
+  };
+
+  const handleToggleBestSeller = async (product: Product) => {
+    const updated = { ...product, isBestSeller: !product.isBestSeller };
+    updateProduct(updated);
+    saveProductToFirestore(updated).catch((e) => console.warn('Firestore sync error:', e));
+    showToast(
+      updated.isBestSeller ? `Marked "${product.name}" as Best Seller` : `Removed Best Seller tag from "${product.name}"`,
+      'success',
+      'Reflected on Main Page & Catalog'
+    );
+  };
+
+  const handleApplyRankPreset = async (preset: 'bestsellers' | 'price-high' | 'price-low' | 'rating' | 'newest' | 'clean-numbers') => {
+    const copy = [...products];
+    if (preset === 'bestsellers') {
+      copy.sort((a, b) => {
+        const scoreA = (a.isBestSeller ? 1000 : 0) + (a.recentPurchasesCount || 0);
+        const scoreB = (b.isBestSeller ? 1000 : 0) + (b.recentPurchasesCount || 0);
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return (a.displayRank ?? 9999) - (b.displayRank ?? 9999);
+      });
+    } else if (preset === 'price-high') {
+      copy.sort((a, b) => b.price - a.price);
+    } else if (preset === 'price-low') {
+      copy.sort((a, b) => a.price - b.price);
+    } else if (preset === 'rating') {
+      copy.sort((a, b) => (b.rating || 5) - (a.rating || 5));
+    } else if (preset === 'newest') {
+      copy.sort((a, b) => (b.isNewArrival || b.isNew ? 1 : 0) - (a.isNewArrival || a.isNew ? 1 : 0));
+    } else if (preset === 'clean-numbers') {
+      copy.sort((a, b) => (a.displayRank ?? 9999) - (b.displayRank ?? 9999));
+    }
+    await updateProductRankings(copy);
+  };
+
+  const handleDirectSetRank = async (productId: string, newRank: number) => {
+    const updated = products.map((p) => (p.id === productId ? { ...p, displayRank: Math.max(1, newRank) } : p));
+    updated.sort((a, b) => (a.displayRank ?? 9999) - (b.displayRank ?? 9999));
+    await updateProductRankings(updated);
+  };
+
+  const handleSetProductTop = async (productId: string) => {
+    const sorted = [...products].sort((a, b) => (a.displayRank ?? 9999) - (b.displayRank ?? 9999));
+    const item = sorted.find((p) => p.id === productId);
+    if (!item) return;
+    const rest = sorted.filter((p) => p.id !== productId);
+    const newOrder = [item, ...rest];
+    await updateProductRankings(newOrder);
   };
 
   // Cloudinary Media Upload State & Handler
@@ -1157,15 +1251,24 @@ export const AdminPortal: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F4F6F9] text-[#2C2E3E] flex font-sans antialiased selection:bg-[#8B5CF6] selection:text-white">
       
+      {/* Mobile Drawer Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300"
+          aria-label="Close sidebar backdrop"
+        />
+      )}
+
       {/* 1. LEFT SIDEBAR (MONO DEEP PURPLE PALETTE #1E1B2E) */}
       <aside
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } shrink-0 bg-[#1E1B2E] text-[#A7A3BF] min-h-screen flex flex-col transition-all duration-300 select-none z-30 sticky top-0 h-screen overflow-y-auto`}
+        className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform transition-transform duration-300 ease-in-out bg-[#1E1B2E] text-[#A7A3BF] flex flex-col select-none overflow-y-auto ${
+          sidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        } lg:translate-x-0 lg:static lg:sticky lg:top-0 lg:h-screen lg:z-30 ${sidebarOpen ? 'lg:w-64' : 'lg:w-20'}`}
       >
         {/* Brand Header */}
         <div className="h-20 px-6 flex items-center justify-between border-b border-[#2C2742]">
-          <div className="flex items-center gap-3 overflow-hidden cursor-pointer" onClick={() => setActiveTab('business')}>
+          <div className="flex items-center gap-3 overflow-hidden cursor-pointer" onClick={() => handleTabSelect('business')}>
             <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-[#8B5CF6] to-[#EC4899] flex items-center justify-center text-white font-black text-lg tracking-tighter shadow-md shrink-0">
               <span className="italic font-mono">M</span>
             </div>
@@ -1180,6 +1283,14 @@ export const AdminPortal: React.FC = () => {
               </div>
             )}
           </div>
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1.5 text-[#8C87A8] hover:text-white rounded-lg hover:bg-[#2C2742] transition-colors cursor-pointer"
+            aria-label="Close Sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Groups */}
@@ -1194,7 +1305,7 @@ export const AdminPortal: React.FC = () => {
             )}
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('business')}
+                onClick={() => handleTabSelect('business')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'business'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1207,7 +1318,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('analytics')}
+                onClick={() => handleTabSelect('analytics')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'analytics'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1230,7 +1341,7 @@ export const AdminPortal: React.FC = () => {
             )}
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('orders')}
+                onClick={() => handleTabSelect('orders')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'orders'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1250,7 +1361,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('inventory')}
+                onClick={() => handleTabSelect('inventory')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'inventory'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1270,7 +1381,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('categories')}
+                onClick={() => handleTabSelect('categories')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'categories'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1290,7 +1401,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('abandoned')}
+                onClick={() => handleTabSelect('abandoned')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'abandoned'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1310,7 +1421,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('coupons')}
+                onClick={() => handleTabSelect('coupons')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'coupons'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1340,7 +1451,7 @@ export const AdminPortal: React.FC = () => {
             )}
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('typography')}
+                onClick={() => handleTabSelect('typography')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'typography'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1353,7 +1464,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('banners')}
+                onClick={() => handleTabSelect('banners')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'banners'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1366,7 +1477,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('reviews')}
+                onClick={() => handleTabSelect('reviews')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'reviews'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1386,7 +1497,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('delivery')}
+                onClick={() => handleTabSelect('delivery')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'delivery'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1399,7 +1510,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('journal')}
+                onClick={() => handleTabSelect('journal')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'journal'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1419,7 +1530,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('cms')}
+                onClick={() => handleTabSelect('cms')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'cms'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1449,7 +1560,7 @@ export const AdminPortal: React.FC = () => {
             )}
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('chat')}
+                onClick={() => handleTabSelect('chat')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'chat'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1469,7 +1580,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('contacts')}
+                onClick={() => handleTabSelect('contacts')}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'contacts'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1489,7 +1600,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('team')}
+                onClick={() => handleTabSelect('team')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'team'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1502,7 +1613,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('calendar')}
+                onClick={() => handleTabSelect('calendar')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'calendar'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1515,7 +1626,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('email')}
+                onClick={() => handleTabSelect('email')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'email'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1538,7 +1649,7 @@ export const AdminPortal: React.FC = () => {
             )}
             <div className="space-y-1">
               <button
-                onClick={() => setActiveTab('hostinger')}
+                onClick={() => handleTabSelect('hostinger')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'hostinger'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1551,7 +1662,7 @@ export const AdminPortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('settings')}
+                onClick={() => handleTabSelect('settings')}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-lg transition-all cursor-pointer text-left ${
                   activeTab === 'settings'
                     ? 'bg-[#8B5CF6] text-white font-semibold shadow-md shadow-[#8B5CF6]/30'
@@ -1587,20 +1698,20 @@ export const AdminPortal: React.FC = () => {
       <div className="flex-1 flex flex-col min-w-0 bg-[#F4F6F9]">
         
         {/* TOP NAVBAR */}
-        <header className="h-20 bg-white border-b border-[#E6E8EC] px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+        <header className="h-16 sm:h-20 bg-white border-b border-[#E6E8EC] px-3 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
           
           {/* Left: Hamburger & Dynamic Title */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2.5 sm:gap-5 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-[#5E6470] hover:text-[#1F1F1F] rounded-lg hover:bg-[#F4F6F9] transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 text-[#5E6470] hover:text-[#1F1F1F] rounded-lg hover:bg-[#F4F6F9] transition-colors cursor-pointer shrink-0"
               aria-label="Toggle Sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            <div>
-              <h1 className="text-xl font-bold text-[#1F2430] tracking-tight">
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-lg md:text-xl font-bold text-[#1F2430] tracking-tight truncate max-w-[160px] sm:max-w-xs md:max-w-none">
                 {activeTab === 'business' && 'Dashboard Overview'}
                 {activeTab === 'analytics' && 'Analytics & Conversion Funnel'}
                 {activeTab === 'typography' && 'Typography & Appearance Studio'}
@@ -1724,6 +1835,15 @@ export const AdminPortal: React.FC = () => {
             >
               <Globe className="w-3.5 h-3.5" />
               <span>Storefront</span>
+            </button>
+
+            {/* Mobile Search Trigger Icon */}
+            <button
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+              className="md:hidden p-1.5 sm:p-2 text-[#5E6470] hover:text-[#1F1F1F] rounded-lg hover:bg-[#F4F6F9] transition-colors cursor-pointer"
+              aria-label="Toggle Mobile Search"
+            >
+              <Search className="w-5 h-5 stroke-[1.75]" />
             </button>
 
             {/* Cloud Sync Status */}
@@ -1873,8 +1993,79 @@ export const AdminPortal: React.FC = () => {
           </div>
         </header>
 
+        {/* MOBILE GLOBAL SEARCH EXPANDABLE DRAWER */}
+        {mobileSearchOpen && (
+          <div className="md:hidden bg-white border-b border-[#E2E5EA] p-3 shadow-md sticky top-16 z-20 space-y-2 animate-fadeIn">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products, orders, clients..."
+                autoFocus
+                className="w-full pl-9 pr-8 py-2 bg-[#F4F6F9] border border-[#E2E5EA] rounded-lg text-xs text-[#1F2430] placeholder:text-[#9EA4B0] focus:outline-none focus:border-[#8B5CF6] focus:bg-white"
+              />
+              <Search className="w-4 h-4 text-[#8B5CF6] absolute left-3 top-1/2 -translate-y-1/2" />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9EA4B0] p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Mobile Quick Search Results */}
+            {globalSearchResults && (
+              <div className="max-h-64 overflow-y-auto space-y-2 text-xs pt-2 border-t border-[#F0ECE1]">
+                {globalSearchResults.orders.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold text-[#8B5CF6] uppercase block mb-1">Orders</span>
+                    {globalSearchResults.orders.slice(0, 3).map((o) => (
+                      <button
+                        key={o.id}
+                        onClick={() => {
+                          setSelectedOrderProfile(o);
+                          handleTabSelect('orders');
+                          setSearchQuery('');
+                          setMobileSearchOpen(false);
+                        }}
+                        className="w-full text-left p-2 hover:bg-[#FAF9F6] rounded flex justify-between cursor-pointer"
+                      >
+                        <span className="font-semibold">#{o.orderNumber} - {o.customerName || (o.shippingAddress as any)?.fullName}</span>
+                        <span className="text-[#8B5CF6] font-bold">{formatPrice(o.total)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {globalSearchResults.products.length > 0 && (
+                  <div>
+                    <span className="text-[10px] font-bold text-[#8B5CF6] uppercase block mb-1">Products</span>
+                    {globalSearchResults.products.slice(0, 3).map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          openCreateProductModal(p);
+                          handleTabSelect('inventory');
+                          setSearchQuery('');
+                          setMobileSearchOpen(false);
+                        }}
+                        className="w-full text-left p-2 hover:bg-[#FAF9F6] rounded flex justify-between cursor-pointer"
+                      >
+                        <span className="font-semibold truncate pr-2">{p.name}</span>
+                        <span className="font-bold shrink-0">{formatPrice(p.price)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* MAIN BODY CONTENT */}
-        <main className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto space-y-8">
+        <main className="flex-1 p-3.5 sm:p-5 lg:p-8 pb-28 lg:pb-8 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8">
           
           {/* ========================================================= */}
           {/* TAB 1: BUSINESS DASHBOARD (4 WAVE CARDS + CHART + USERS)  */}
@@ -3963,14 +4154,55 @@ export const AdminPortal: React.FC = () => {
                 </div>
               </div>
 
+              {/* Product Rankings & Storefront Priority Manager Banner */}
+              <div className="bg-gradient-to-r from-[#FAF5FF] to-[#FDF2F8] border border-[#F3E8FF] rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-[#E9D5FF] text-[#8B5CF6] flex items-center justify-center shadow-xs shrink-0">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-sm text-[#1F2430]">Storefront Product Rankings & Best Sellers</h3>
+                      <span className="text-[10px] bg-[#8B5CF6] text-white px-2.5 py-0.5 rounded-full font-bold">
+                        Controls Main & Category Pages
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#6D688A] mt-0.5">
+                      Set custom priority sequences (1 to {products.length}), highlight Best Sellers, or move top drops to rank #1.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                  <button
+                    onClick={() => handleApplyRankPreset('bestsellers')}
+                    className="px-3 py-2 bg-white hover:bg-[#FAF9F6] border border-[#E2E5EA] text-[#C85A32] font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Sort so all Best Sellers appear first"
+                  >
+                    <Star className="w-3.5 h-3.5 fill-[#C85A32]" />
+                    <span>Best Sellers First</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowRankingStudio(true)}
+                    className="px-4 py-2 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold text-xs rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowUpDown className="w-3.5 h-3.5" />
+                    <span>Manage Rankings Studio</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Products Table */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-[#EAE6DE] text-[#6E685F] uppercase tracking-wider text-[10px] bg-[#FAF9F6]">
+                      <th className="py-3 px-3 w-16">Rank</th>
                       <th className="py-3 px-3">Product</th>
                       <th className="py-3 px-3">SKU</th>
                       <th className="py-3 px-3">Category</th>
+                      <th className="py-3 px-3">Best Seller</th>
                       <th className="py-3 px-3">Price</th>
                       <th className="py-3 px-3">Video Stream</th>
                       <th className="py-3 px-3">Stock Counter</th>
@@ -3980,6 +4212,29 @@ export const AdminPortal: React.FC = () => {
                   <tbody className="divide-y divide-[#F0ECE1]">
                     {products.map((prod) => (
                       <tr key={prod.id} className="hover:bg-[#FAF9F6] transition-colors">
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono font-bold text-xs bg-[#FAF5FF] text-[#8B5CF6] border border-[#F3E8FF] px-2 py-0.5 rounded-md min-w-[28px] text-center">
+                              #{prod.displayRank ?? (products.indexOf(prod) + 1)}
+                            </span>
+                            <div className="flex flex-col">
+                              <button
+                                onClick={() => handleMoveProductRank(prod.id, 'up')}
+                                className="text-gray-400 hover:text-[#8B5CF6] p-0.5 rounded hover:bg-gray-100 cursor-pointer"
+                                title="Move Rank Up"
+                              >
+                                <ChevronUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => handleMoveProductRank(prod.id, 'down')}
+                                className="text-gray-400 hover:text-[#8B5CF6] p-0.5 rounded hover:bg-gray-100 cursor-pointer"
+                                title="Move Rank Down"
+                              >
+                                <ChevronDown className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
                         <td className="py-3 px-3 flex items-center gap-3">
                           <img src={prod.images?.[0] || 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=800&auto=format&fit=crop'} alt={prod.name} className="w-12 h-12 rounded-lg object-cover border" />
                           <div>
@@ -3989,6 +4244,20 @@ export const AdminPortal: React.FC = () => {
                         </td>
                         <td className="py-3 px-3 font-mono font-bold text-[#8B5CF6]">{prod.sku || 'HAU-001'}</td>
                         <td className="py-3 px-3 uppercase font-semibold text-[#6E685F]">{prod.category}</td>
+                        <td className="py-3 px-3">
+                          <button
+                            onClick={() => handleToggleBestSeller(prod)}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer ${
+                              prod.isBestSeller
+                                ? 'bg-[#FAF1ED] text-[#C85A32] border border-[#F6D0C1] shadow-2xs'
+                                : 'bg-gray-100 text-gray-400 hover:text-gray-700'
+                            }`}
+                            title="Toggle Best Seller Status"
+                          >
+                            <Star className={`w-3 h-3 ${prod.isBestSeller ? 'fill-[#C85A32] text-[#C85A32]' : 'text-gray-400'}`} />
+                            <span>{prod.isBestSeller ? 'Best Seller' : 'Standard'}</span>
+                          </button>
+                        </td>
                         <td className="py-3 px-3 font-bold text-[#1F1F1F]">{formatPrice(prod.price)}</td>
                         <td className="py-3 px-3">
                           {prod.youtubeUrl || prod.videoUrl ? (
@@ -4086,7 +4355,10 @@ export const AdminPortal: React.FC = () => {
                             colors: newProdColors,
                             customFont: newProdCustomFont,
                             customFontSize: newProdCustomFontSize,
-                            buyNowButtonColor: newProdBuyNowColor
+                            buyNowButtonColor: newProdBuyNowColor,
+                            displayRank: Number(newProdRank),
+                            isBestSeller: newProdIsBestSeller,
+                            deliveryDays: Number(newProdDeliveryDays)
                           };
                           updateProduct(updatedProd);
                           saveProductToFirestore(updatedProd).catch((err) => console.warn('Firestore product update error:', err));
@@ -4120,6 +4392,9 @@ export const AdminPortal: React.FC = () => {
                             customFont: newProdCustomFont,
                             customFontSize: newProdCustomFontSize,
                             buyNowButtonColor: newProdBuyNowColor,
+                            displayRank: Number(newProdRank),
+                            isBestSeller: newProdIsBestSeller,
+                            deliveryDays: Number(newProdDeliveryDays),
                             reviews: newProdReviews
                           };
                           addProduct(createdProd);
@@ -4221,6 +4496,78 @@ export const AdminPortal: React.FC = () => {
                             onChange={(e) => setNewProdPurchasedCount(Number(e.target.value))}
                             className="w-full p-2.5 border border-[#D5D0C5] rounded-xs bg-[#FAF9F6]"
                           />
+                        </div>
+                      </div>
+
+                      {/* Storefront Ranking & Best Seller Priority */}
+                      <div className="p-3.5 bg-[#FAF5FF] border border-[#F3E8FF] rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="font-bold text-[#1F2430] block mb-1 flex items-center gap-1.5">
+                            <ArrowUpDown className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                            <span>Storefront Display Priority / Rank #</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="999"
+                            value={newProdRank}
+                            onChange={(e) => setNewProdRank(Math.max(1, Number(e.target.value)))}
+                            placeholder="e.g. 1 for top position"
+                            className="w-full p-2.5 border border-[#D5D0C5] rounded-xs bg-white text-xs font-mono font-bold text-[#8B5CF6]"
+                          />
+                          <span className="text-[10px] text-[#6D688A] mt-0.5 block">
+                            Lower numbers (e.g. 1, 2, 3) appear first on the Main Page and Category Catalog.
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col justify-between">
+                          <label className="font-bold text-[#1F2430] block mb-1 flex items-center gap-1.5">
+                            <Star className="w-3.5 h-3.5 text-[#C85A32]" />
+                            <span>Best Seller Spotlight</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setNewProdIsBestSeller(!newProdIsBestSeller)}
+                            className={`w-full p-2.5 rounded-xs border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              newProdIsBestSeller
+                                ? 'bg-[#FAF1ED] text-[#C85A32] border-[#F6D0C1] shadow-2xs'
+                                : 'bg-white text-gray-500 border-[#D5D0C5] hover:border-gray-400'
+                            }`}
+                          >
+                            <Star className={`w-4 h-4 ${newProdIsBestSeller ? 'fill-[#C85A32] text-[#C85A32]' : 'text-gray-400'}`} />
+                            <span>{newProdIsBestSeller ? 'Tagged as Best Seller ⭐' : 'Standard Product (Not Best Seller)'}</span>
+                          </button>
+                          <span className="text-[10px] text-[#6D688A] mt-0.5 block">
+                            Badged as Best Seller and featured in the Home "Best Sellers" tab.
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Individual Product Delivery Timeframe Slider */}
+                      <div className="p-3.5 bg-[#F0FDF4] border border-[#DCFCE7] rounded-xl space-y-2">
+                        <div className="flex justify-between items-center">
+                          <label className="font-bold text-[#1F2430] flex items-center gap-1.5 text-xs">
+                            <Truck className="w-3.5 h-3.5 text-[#10B981]" />
+                            <span>Product Delivery Timeframe ({newProdDeliveryDays} Business Days)</span>
+                          </label>
+                          <span className="font-mono font-bold text-xs bg-white text-[#10B981] border border-[#DCFCE7] px-2.5 py-0.5 rounded-md shadow-2xs">
+                            {newProdDeliveryDays} Days Dispatch
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="30"
+                          value={newProdDeliveryDays}
+                          onChange={(e) => setNewProdDeliveryDays(Number(e.target.value))}
+                          className="w-full accent-[#10B981] cursor-pointer"
+                        />
+                        <div className="flex justify-between items-center text-[10px] text-[#6D688A]">
+                          <span>1 Day (Express)</span>
+                          <span className="bg-white/80 px-2 py-0.5 rounded border border-[#DCFCE7]">
+                            Customer Arrival: <strong className="text-[#10B981]">{calculateDeliveryDate(0, newProdDeliveryDays).formattedDate}</strong>
+                          </span>
+                          <span>30 Days (Pre-Order / Freight)</span>
                         </div>
                       </div>
 
@@ -4799,6 +5146,214 @@ export const AdminPortal: React.FC = () => {
                       </div>
 
                     </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Product Rankings & Priority Studio Modal */}
+              {showRankingStudio && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+                  <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-[#E2E5EA] overflow-hidden">
+                    {/* Modal Header */}
+                    <div className="p-5 sm:p-6 border-b border-[#F0ECE1] bg-gradient-to-r from-[#FAF5FF] via-white to-[#FDF2F8] flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#8B5CF6] text-white flex items-center justify-center shadow-sm">
+                          <ArrowUpDown className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-lg sm:text-xl font-bold text-[#1F2430]">Storefront Product Ranking Studio</h2>
+                            <span className="bg-[#8B5CF6] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              Live Sync
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#6D688A] mt-0.5">
+                            Sequence defines the order products appear on the Main Page and Category Catalog.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setShowRankingStudio(false)}
+                        className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Presets & Filter Bar */}
+                    <div className="p-4 bg-[#FAF9F6] border-b border-[#F0ECE1] flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-[#6E685F] text-[11px] uppercase tracking-wider">Quick Presets:</span>
+                        <button
+                          onClick={() => handleApplyRankPreset('bestsellers')}
+                          className="px-2.5 py-1.5 bg-white border border-[#E2E5EA] hover:border-[#8B5CF6] text-[#C85A32] font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                        >
+                          <Star className="w-3.5 h-3.5 fill-[#C85A32]" />
+                          <span>Best Sellers First</span>
+                        </button>
+                        <button
+                          onClick={() => handleApplyRankPreset('price-high')}
+                          className="px-2.5 py-1.5 bg-white border border-[#E2E5EA] hover:border-[#8B5CF6] text-gray-700 font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs"
+                        >
+                          Price: High to Low
+                        </button>
+                        <button
+                          onClick={() => handleApplyRankPreset('price-low')}
+                          className="px-2.5 py-1.5 bg-white border border-[#E2E5EA] hover:border-[#8B5CF6] text-gray-700 font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs"
+                        >
+                          Price: Low to High
+                        </button>
+                        <button
+                          onClick={() => handleApplyRankPreset('clean-numbers')}
+                          className="px-2.5 py-1.5 bg-[#FAF5FF] border border-[#E9D5FF] text-[#8B5CF6] font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs"
+                        >
+                          Auto-Sequence 1..{products.length}
+                        </button>
+                      </div>
+
+                      {/* Filter by category */}
+                      <div className="flex items-center gap-2">
+                        <label className="text-[11px] text-[#6E685F] font-semibold">Category:</label>
+                        <select
+                          value={rankingFilterCategory}
+                          onChange={(e) => setRankingFilterCategory(e.target.value)}
+                          className="p-1.5 bg-white border border-[#D5D0C5] rounded-lg text-xs font-semibold"
+                        >
+                          <option value="all">All Categories ({products.length})</option>
+                          {categories.map((c) => (
+                            <option key={c.id || c.key} value={c.key}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Draggable / Rankable Product List */}
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-2.5 divide-y divide-gray-100">
+                      {[...products]
+                        .sort((a, b) => (a.displayRank ?? 9999) - (b.displayRank ?? 9999))
+                        .filter((p) => rankingFilterCategory === 'all' || p.category === rankingFilterCategory)
+                        .map((prod, index) => (
+                          <div
+                            key={prod.id}
+                            className="pt-2.5 first:pt-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-xl hover:bg-[#FAF9F6] transition-colors border border-transparent hover:border-gray-200"
+                          >
+                            <div className="flex items-center gap-3">
+                              {/* Position Badge & Controls */}
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-9 h-9 rounded-lg bg-[#8B5CF6]/10 border border-[#8B5CF6]/20 text-[#8B5CF6] font-mono font-bold text-sm flex items-center justify-center">
+                                  #{prod.displayRank ?? (index + 1)}
+                                </div>
+                                <div className="flex flex-col">
+                                  <button
+                                    onClick={() => handleMoveProductRank(prod.id, 'up')}
+                                    disabled={index === 0}
+                                    className="p-1 text-gray-400 hover:text-[#8B5CF6] disabled:opacity-30 rounded hover:bg-gray-100 cursor-pointer"
+                                    title="Move Up"
+                                  >
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveProductRank(prod.id, 'down')}
+                                    disabled={index === products.length - 1}
+                                    className="p-1 text-gray-400 hover:text-[#8B5CF6] disabled:opacity-30 rounded hover:bg-gray-100 cursor-pointer"
+                                    title="Move Down"
+                                  >
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <img
+                                src={prod.images?.[0] || 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=800&auto=format&fit=crop'}
+                                alt={prod.name}
+                                className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+                              />
+
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-xs text-[#1F2430]">{prod.name}</span>
+                                  {prod.isBestSeller && (
+                                    <span className="px-1.5 py-0.5 bg-[#FAF1ED] text-[#C85A32] border border-[#F6D0C1] rounded text-[10px] font-bold flex items-center gap-1">
+                                      <Star className="w-2.5 h-2.5 fill-[#C85A32]" /> Best Seller
+                                    </span>
+                                  )}
+                                  {prod.deliveryDays && (
+                                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-medium flex items-center gap-1">
+                                      <Truck className="w-2.5 h-2.5" /> {prod.deliveryDays}d Dispatch
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-[11px] text-[#6E685F] mt-0.5">
+                                  <span className="font-mono text-[#8B5CF6]">{prod.sku || 'HAU-001'}</span>
+                                  <span>•</span>
+                                  <span className="uppercase font-semibold">{prod.category}</span>
+                                  <span>•</span>
+                                  <span className="font-bold text-gray-900">{formatPrice(prod.price)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons for this item */}
+                            <div className="flex items-center gap-2 self-end sm:self-center">
+                              <button
+                                onClick={() => handleSetProductTop(prod.id)}
+                                className="px-2.5 py-1.5 bg-white border border-gray-200 hover:border-[#8B5CF6] text-xs font-semibold text-gray-700 hover:text-[#8B5CF6] rounded-lg transition-colors cursor-pointer shadow-2xs flex items-center gap-1"
+                                title="Pin to position #1"
+                              >
+                                <Sparkles className="w-3 h-3 text-amber-500" />
+                                <span>Move to #1</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleToggleBestSeller(prod)}
+                                className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 shadow-2xs ${
+                                  prod.isBestSeller
+                                    ? 'bg-[#FAF1ED] text-[#C85A32] border-[#F6D0C1]'
+                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                                }`}
+                              >
+                                <Star className={`w-3.5 h-3.5 ${prod.isBestSeller ? 'fill-[#C85A32] text-[#C85A32]' : 'text-gray-400'}`} />
+                                <span>{prod.isBestSeller ? 'Best Seller' : 'Standard'}</span>
+                              </button>
+
+                              <div className="flex items-center gap-1 pl-2 border-l border-gray-200">
+                                <label className="text-[10px] text-gray-400 font-bold uppercase">Rank:</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="999"
+                                  defaultValue={prod.displayRank ?? (index + 1)}
+                                  onBlur={(e) => {
+                                    const val = Number(e.target.value);
+                                    if (val && val !== prod.displayRank) {
+                                      handleDirectSetRank(prod.id, val);
+                                    }
+                                  }}
+                                  className="w-12 p-1 text-center font-mono font-bold text-xs border border-gray-300 rounded-md focus:border-[#8B5CF6] outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-4 bg-white border-t border-[#F0ECE1] flex items-center justify-between text-xs">
+                      <span className="text-[#6E685F] text-[11px] flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                        Changes save in real time and automatically re-sort Storefront and Categories.
+                      </span>
+
+                      <button
+                        onClick={() => setShowRankingStudio(false)}
+                        className="px-6 py-2 bg-[#1F2430] hover:bg-black text-white font-bold rounded-lg transition-colors cursor-pointer"
+                      >
+                        Done / Close Studio
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -5783,7 +6338,7 @@ export const AdminPortal: React.FC = () => {
                   <div className="p-3 bg-white border rounded-lg space-y-1">
                     <span className="font-bold text-[#1F1F1F] block">Live Storefront Checkout Calculation:</span>
                     <p className="text-[#555048]">
-                      Orders placed today arrive estimated by: <strong className="text-[#8B5CF6]">{calculateDeliveryDate()}</strong>
+                      Orders placed today arrive estimated by: <strong className="text-[#8B5CF6]">{calculateDeliveryDate().formattedDate}</strong>
                     </p>
                   </div>
                 </div>
@@ -5821,6 +6376,123 @@ export const AdminPortal: React.FC = () => {
                       Automatically subtracted in real-time when clients select UPI / Credit Card / NetBanking at checkout.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Individual Per-Product Delivery Timeframe Section */}
+              <div className="border-t border-[#F0ECE1] pt-6 space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-[#1F2430] flex items-center gap-2">
+                        <Truck className="w-5 h-5 text-[#8B5CF6]" />
+                        <span>Per-Product Delivery Sliders</span>
+                      </h3>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
+                        Live Real-Time Sync
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#8C92A0] mt-0.5">
+                      Set custom delivery days for each specific product. Moving the slider updates Firestore and customer product pages instantly.
+                    </p>
+                  </div>
+
+                  <div className="w-full sm:w-64 relative">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      value={deliveryProductSearch}
+                      onChange={(e) => setDeliveryProductSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-[#FAF9F6] border border-[#D5D0C5] rounded-lg text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {products
+                    .filter((p) => !deliveryProductSearch || p.name.toLowerCase().includes(deliveryProductSearch.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(deliveryProductSearch.toLowerCase())))
+                    .map((prod) => {
+                      const prodDays = prod.deliveryDays ?? standardDeliveryDays;
+                      const hasCustom = typeof prod.deliveryDays === 'number' && prod.deliveryDays !== standardDeliveryDays;
+                      const arrival = calculateDeliveryDate(0, prodDays);
+
+                      return (
+                        <div
+                          key={prod.id}
+                          className={`p-4 rounded-xl border transition-all ${
+                            hasCustom ? 'bg-[#F0FDF4] border-[#BBF7D0]' : 'bg-[#FAF9F6] border-[#EAE6DE]'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={prod.images?.[0] || 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=800&auto=format&fit=crop'}
+                                alt={prod.name}
+                                className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+                              />
+                              <div>
+                                <h4 className="font-bold text-xs text-[#1F2430] line-clamp-1">{prod.name}</h4>
+                                <div className="flex items-center gap-2 text-[10px] text-[#6E685F] mt-0.5">
+                                  <span className="font-mono text-[#8B5CF6] font-bold">{prod.sku || 'HAU-001'}</span>
+                                  <span>•</span>
+                                  <span className="uppercase font-semibold">{prod.category}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1">
+                              <span
+                                className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg border ${
+                                  hasCustom
+                                    ? 'bg-white text-emerald-700 border-emerald-300 shadow-2xs'
+                                    : 'bg-white text-[#8B5CF6] border-gray-200'
+                                }`}
+                              >
+                                {prodDays} Days
+                              </span>
+                              <span className="text-[9px] text-gray-500">
+                                {hasCustom ? '⚡ Custom Timeframe' : 'Default Store Window'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-gray-500 font-medium">Adjust Product Delivery Days:</span>
+                              <span className="text-gray-700 font-bold">
+                                Est. Arrival: <strong className="text-emerald-700">{arrival.formattedDate}</strong>
+                              </span>
+                            </div>
+
+                            <input
+                              type="range"
+                              min="1"
+                              max="30"
+                              value={prodDays}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                updateProductDeliveryDays(prod.id, val);
+                              }}
+                              className="w-full accent-emerald-600 cursor-pointer"
+                            />
+
+                            <div className="flex justify-between items-center text-[10px] text-gray-400">
+                              <span>1 Day (Express Dispatch)</span>
+                              {hasCustom && (
+                                <button
+                                  onClick={() => updateProductDeliveryDays(prod.id, standardDeliveryDays)}
+                                  className="text-[10px] text-[#8B5CF6] hover:underline font-semibold cursor-pointer"
+                                >
+                                  Reset to Store Standard ({standardDeliveryDays}d)
+                                </button>
+                              )}
+                              <span>30 Days (Pre-Order / Freight)</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             </div>
@@ -6582,7 +7254,7 @@ export const AdminPortal: React.FC = () => {
                     className="w-full p-2.5 bg-white border rounded-lg"
                   />
                   <p className="text-[11px] text-[#8C8477]">
-                    Estimated arrival date computed dynamically: <strong>{calculateDeliveryDate()}</strong>
+                    Estimated arrival date computed dynamically: <strong>{calculateDeliveryDate().formattedDate}</strong>
                   </p>
                 </div>
 
@@ -7044,6 +7716,60 @@ export const AdminPortal: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation Bar (Quick Thumb Dock on Phone Screen) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#161B26]/95 backdrop-blur-md border-t border-[#2A3040] py-2 px-3 flex items-center justify-around text-white shadow-2xl safe-area-pb">
+        <button
+          onClick={() => handleTabSelect('business')}
+          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors cursor-pointer ${
+            activeTab === 'business' ? 'text-[#8B5CF6]' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5" />
+          <span className="text-[10px] font-semibold">Dashboard</span>
+        </button>
+
+        <button
+          onClick={() => handleTabSelect('orders')}
+          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors cursor-pointer relative ${
+            activeTab === 'orders' ? 'text-[#8B5CF6]' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <ShoppingBag className="w-5 h-5" />
+          {orders.filter((o) => o.status === 'pending').length > 0 && (
+            <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-500"></span>
+          )}
+          <span className="text-[10px] font-semibold">Orders</span>
+        </button>
+
+        <button
+          onClick={() => handleTabSelect('inventory')}
+          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors cursor-pointer ${
+            activeTab === 'inventory' ? 'text-[#8B5CF6]' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Package className="w-5 h-5" />
+          <span className="text-[10px] font-semibold">Products</span>
+        </button>
+
+        <button
+          onClick={() => handleTabSelect('delivery')}
+          className={`flex flex-col items-center gap-1 p-1.5 rounded-lg transition-colors cursor-pointer ${
+            activeTab === 'delivery' ? 'text-[#8B5CF6]' : 'text-gray-400 hover:text-white'
+          }`}
+        >
+          <Truck className="w-5 h-5" />
+          <span className="text-[10px] font-semibold">Delivery</span>
+        </button>
+
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="flex flex-col items-center gap-1 p-1.5 rounded-lg text-gray-400 hover:text-white transition-colors cursor-pointer"
+        >
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] font-semibold">More</span>
+        </button>
+      </div>
 
     </div>
   );

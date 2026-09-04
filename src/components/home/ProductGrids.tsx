@@ -29,23 +29,29 @@ const gridItemVariants = {
 
 export const ProductGrids: React.FC = () => {
   const { products, setActivePage, setSelectedCategory } = useStore();
-  const [activeTab, setActiveTab] = useState<'all' | 'new' | 'featured' | 'eyewear'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'bestsellers' | 'new' | 'featured' | 'eyewear'>('all');
 
-  const newArrivals = products.filter((p) => p.isNewArrival || p.id === 'prod-1' || p.id === 'prod-2' || p.id === 'prod-3' || p.id === 'prod-4');
-  const featuredItems = products.filter((p) => p.isFeatured || p.id === 'prod-5' || p.id === 'prod-2' || p.id === 'prod-4' || p.id === 'prod-3');
-  const trendingEyewear = products.filter((p) => p.category === 'glasses' || p.isTrendingEyewear);
+  // Strictly order products by admin displayRank priority
+  const sortedProducts = [...products].sort((a, b) => (a.displayRank ?? 9999) - (b.displayRank ?? 9999));
+
+  const bestSellers = sortedProducts.filter((p) => p.isBestSeller || (p.recentPurchasesCount && p.recentPurchasesCount > 20));
+  const newArrivals = sortedProducts.filter((p) => p.isNewArrival || p.isNew || p.id === 'prod-1' || p.id === 'prod-2');
+  const featuredItems = sortedProducts.filter((p) => p.isFeatured || p.id === 'prod-5' || p.id === 'prod-3');
+  const trendingEyewear = sortedProducts.filter((p) => p.category === 'glasses' || p.isTrendingEyewear);
 
   const displayedProducts = 
-    activeTab === 'new' ? newArrivals :
-    activeTab === 'featured' ? featuredItems :
-    activeTab === 'eyewear' ? trendingEyewear :
-    products.slice(0, 8);
+    activeTab === 'bestsellers' ? (bestSellers.length > 0 ? bestSellers.slice(0, 8) : sortedProducts.slice(0, 8)) :
+    activeTab === 'new' ? (newArrivals.length > 0 ? newArrivals.slice(0, 8) : sortedProducts.slice(0, 8)) :
+    activeTab === 'featured' ? (featuredItems.length > 0 ? featuredItems.slice(0, 8) : sortedProducts.slice(0, 8)) :
+    activeTab === 'eyewear' ? (trendingEyewear.length > 0 ? trendingEyewear.slice(0, 8) : sortedProducts.slice(0, 8)) :
+    sortedProducts.slice(0, 8);
 
-  const tabs: { id: 'all' | 'new' | 'featured' | 'eyewear'; label: string }[] = [
-    { id: 'all', label: 'All Products' },
+  const tabs: { id: 'all' | 'bestsellers' | 'new' | 'featured' | 'eyewear'; label: string }[] = [
+    { id: 'all', label: 'All Curations' },
+    { id: 'bestsellers', label: '⭐ Best Sellers' },
     { id: 'new', label: 'New Arrivals' },
-    { id: 'featured', label: 'Featured Items' },
-    { id: 'eyewear', label: 'Trending Eyewear' },
+    { id: 'featured', label: 'Featured Pieces' },
+    { id: 'eyewear', label: 'Optics' },
   ];
 
   const handleViewAll = () => {
@@ -73,7 +79,7 @@ export const ProductGrids: React.FC = () => {
         </div>
 
         {/* Tab Switcher with sliding layoutId indicator */}
-        <div className="flex items-center gap-1.5 bg-[#EFECE6] p-1 rounded-full text-xs font-medium relative">
+        <div className="flex items-center gap-1.5 bg-[#EFECE6] dark:bg-[#222] p-1 rounded-full text-xs font-medium relative overflow-x-auto no-scrollbar max-w-full">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (

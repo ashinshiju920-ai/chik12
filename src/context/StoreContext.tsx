@@ -51,7 +51,10 @@ import {
   DEFAULT_CATEGORIES,
   subscribeToCategories,
   saveCategoryToFirestore,
-  updateFirestoreCategory
+  updateFirestoreCategory,
+  subscribeToDeliverySettings,
+  saveDeliverySettingsToFirestore,
+  DeliverySettings
 } from '../lib/firebaseService';
 import {
   trackProductView,
@@ -114,9 +117,10 @@ interface StoreContextType {
   // Dynamic Delivery Estimator & Online Payment Discount
   standardDeliveryDays: number;
   setStandardDeliveryDays: (days: number) => void;
+  updateProductDeliveryDays: (productId: string, days: number) => Promise<void>;
   onlineDiscountPercent: number;
   updateOnlineDiscountPercent: (percent: number) => void;
-  calculateDeliveryDate: (offsetDays?: number) => { formattedDate: string; fullDate: string; days: number; shortDate: string };
+  calculateDeliveryDate: (offsetDays?: number, productDeliveryDays?: number) => { formattedDate: string; fullDate: string; days: number; shortDate: string };
   
   // User & Auth
   currentUser: User | null;
@@ -149,6 +153,7 @@ interface StoreContextType {
   // Admin Product Catalog Management
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
+  updateProductRankings: (orderedProducts: Product[]) => Promise<void>;
   deleteProduct: (productId: string) => void;
   
   // Coupons & Marketing
@@ -1025,7 +1030,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const map = new Map<string, Product>();
           prev.forEach((p) => map.set(p.id, p));
           cloudProducts.forEach((p) => map.set(p.id, p));
-          return Array.from(map.values());
+          const list = Array.from(map.values());
+          return list.sort((a, b) => (a.displayRank ?? 9999) - (b.displayRank ?? 9999));
         });
       }
     });
@@ -1096,6 +1102,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     });
 
+    // 7. Real-Time Delivery Settings onSnapshot (settings/delivery)
+    const unsubscribeDelivery = subscribeToDeliverySettings((cloudDelivery) => {
+      if (cloudDelivery && typeof cloudDelivery.standardDeliveryDays === 'number') {
+        setStandardDeliveryDaysState(cloudDelivery.standardDeliveryDays);
+        if (typeof cloudDelivery.onlineDiscountPercent === 'number') {
+          setOnlineDiscountPercent(cloudDelivery.onlineDiscountPercent);
+        }
+      }
+    });
+
     return () => {
       unsubscribeProducts();
       unsubscribeBanner();
@@ -1103,6 +1119,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       unsubscribeOrders();
       unsubscribeCategories();
       unsubscribeTheme();
+      unsubscribeDelivery();
     };
   }, [applyThemeSettingsToDOM]);
 
@@ -1110,11 +1127,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const clamped = Math.max(1, Math.min(30, days));
     setStandardDeliveryDaysState(clamped);
     localStorage.setItem('haute_delivery_days', clamped.toString());
-    showToast(`Delivery timeframe updated to ${clamped} business days`, 'info');
+    saveDeliverySettingsToFirestore({ standardDeliveryDays: clamped }).catch((e) => console.warn('Firestore delivery sync error:', e));
+    showToast(`Delivery timeframe updated to ${clamped} business days`, 'info', 'Synced to Firebase & Live Storefront');
   };
 
-  const calculateDeliveryDate = (offsetDays: number = 0) => {
-    const totalDays = standardDeliveryDays + offsetDays;
+  const updateProductDeliveryDays = async (productId: string, days: number) => {
+    const clamped = Math.max(1, Math.min(60, days));
+    setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, deliveryDays: clamped } : p)));
+    const target = products.find((p) => p.id === productId);
+    if (target) {
+      const updated = { ...target, deliveryDays: clamped };
+      if (selectedProduct && selectedProduct.id === productId) {
+        setSelectedProduct(updated);
+      }
+      await saveProductToFirestore(updated).catch((e) => console.warn('Product delivery update error:', e));
+    }
+    showToast(`Product delivery set to ${clamped} days`, 'success', 'Live on website in real time');
+  };
+
+  const calculateDeliveryDate = (offsetDays: number = 0, productDeliveryDays?: number) => {
+    const baseDays = typeof productDeliveryDays === 'number' && productDeliveryDays > 0 
+      ? productDeliveryDays 
+      : standardDeliveryDays;
+    const totalDays = baseDays + offsetDays;
     const targetDate = new Date(Date.now() + totalDays * 24 * 60 * 60 * 1000);
     const formattedDate = targetDate.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -1566,6 +1601,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
     saveProductToFirestore(updated).catch((e) => console.warn('Firestore update error:', e));
     showToast(`Updated product: ${updated.name}`, 'success', `Synced to Firebase Firestore`);
+  };
+
+  const updateProductRankings = async (orderedProducts: Product[]) => {
+    // Assign displayRank 1..N based on specified sequence
+    const ranked = orderedProducts.map((p, index) => ({
+      ...p,
+      displayRank: index + 1
+    }));
+    
+    setProducts(ranked);
+
+    try {
+      localStorage.setItem('diva_products_custom_rank', JSON.stringify(ranked.map(p => ({ id: p.id, displayRank: p.displayRank, isBestSeller: p.isBestSeller }))));
+      // Asynchronously batch-persist updated rank to Firestore
+      for (const p of ranked) {
+        saveProductToFirestore(p).catch((err) => console.warn('Sync rank failed for', p.id, err));
+      }
+      showToast('Storefront Rankings Saved', 'success', 'Product order updated for Main page & Categories');
+    } catch (e) {
+      console.error('Failed to save rankings', e);
+      showToast('Could not save all rankings to Firestore', 'error');
+    }
   };
 
   const deleteProduct = (productId: string) => {
@@ -2137,6 +2194,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateProductStock,
         addProduct,
         updateProduct,
+        updateProductRankings,
         deleteProduct,
         addProductReview,
         voteReviewHelpful,
@@ -2172,6 +2230,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         clearWishlist,
         standardDeliveryDays,
         setStandardDeliveryDays,
+        updateProductDeliveryDays,
         onlineDiscountPercent,
         updateOnlineDiscountPercent,
         calculateDeliveryDate,

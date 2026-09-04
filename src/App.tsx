@@ -26,6 +26,7 @@ import { QuickViewModal } from './components/product/QuickViewModal';
 import { ToastContainer } from './components/common/ToastContainer';
 import { ScrollToTop } from './components/common/ScrollToTop';
 import { WhatsAppSupportWidget } from './components/common/WhatsAppSupportWidget';
+import { SearchModal } from './components/common/SearchModal';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const MainContent: React.FC = () => {
@@ -158,6 +159,7 @@ export default function App() {
             <QuickViewModal />
             <ToastContainer />
             <WhatsAppSupportWidget />
+            <SearchModal />
           </div>
         </StoreProvider>
       </AuthProvider>
