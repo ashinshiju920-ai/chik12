@@ -29,8 +29,8 @@ const cashfreeDevPlugin = (env: Record<string, string>): Plugin => ({
       req.on('end', async () => {
         try {
           const body = JSON.parse(bodyStr || '{}');
-          const appId = process.env.CASHFREE_APP_ID || env.CASHFREE_APP_ID || env.VITE_CASHFREE_APP_ID || '';
-          const secretKey = process.env.CASHFREE_SECRET_KEY || env.CASHFREE_SECRET_KEY || '';
+          const appId = process.env.CASHFREE_APP_ID || env.CASHFREE_APP_ID || env.VITE_CASHFREE_APP_ID;
+          const secretKey = process.env.CASHFREE_SECRET_KEY || env.CASHFREE_SECRET_KEY;
 
           res.setHeader('Access-Control-Allow-Origin', '*');
           res.setHeader('Content-Type', 'application/json');

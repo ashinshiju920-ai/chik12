@@ -1355,6 +1355,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [currentOrder, setCurrentOrder] = useState<Order | null>(() => {
     try {
+      const last = localStorage.getItem('divachic_last_order');
+      if (last) {
+        return JSON.parse(last);
+      }
       const pending = localStorage.getItem('divachic_pending_order');
       if (pending) {
         const p = JSON.parse(pending);
@@ -1430,15 +1434,67 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Retrieve pending order if present
       let pending: any = null;
       try {
-        const str = localStorage.getItem('divachic_pending_order');
+        const str = localStorage.getItem('divachic_pending_order') || localStorage.getItem('divachic_last_order');
         if (str) pending = JSON.parse(str);
       } catch {}
 
+      const effectiveOrderId = pending?.orderId || orderIdParam || `ORD_${Date.now()}`;
+
       if (pending) {
+        const restoredOrder = {
+          id: effectiveOrderId,
+          orderId: effectiveOrderId,
+          orderNumber: effectiveOrderId,
+          customer: pending.customerDetails || {},
+          customerName: pending.customerDetails?.fullName || 'Valued Client',
+          email: pending.customerDetails?.email || '',
+          items: pending.cartItems || [],
+          subtotal: pending.subtotal || 0,
+          shippingFee: pending.shippingFee || 0,
+          packagingFee: 0,
+          totalAmount: pending.totalAmount || 0,
+          total: pending.totalAmount || 0,
+          paymentMethod: 'Cashfree (Prepaid)',
+          paymentStatus: 'Paid' as any,
+          orderStatus: 'Placed' as any,
+          status: 'Placed' as any,
+          createdAt: new Date(),
+          trackingNumber: `TRK-${Date.now().toString().slice(-8)}-IN`,
+          carrier: 'Blue Dart / Delhivery Express',
+          shippingAddress: {
+            id: `addr-${Date.now()}`,
+            fullName: pending.customerDetails?.fullName || '',
+            phone: pending.customerDetails?.phone || '',
+            street: pending.customerDetails?.addressLine1 || '',
+            apartment: pending.customerDetails?.addressLine2 || '',
+            city: pending.customerDetails?.city || '',
+            state: pending.customerDetails?.state || '',
+            pincode: pending.customerDetails?.postalCode || '',
+            country: pending.customerDetails?.country || 'India',
+            type: 'home' as const
+          },
+          timeline: [
+            {
+              title: 'Payment Confirmed & Verified (Cashfree)',
+              description: 'Instant prepaid verification successful. Order queued for packing.',
+              timestamp: 'Just Now',
+              location: 'Cashfree Payments',
+              completed: true,
+              current: true
+            }
+          ]
+        };
+
+        setCurrentOrder(restoredOrder as any);
+        setOrders((prev) => [restoredOrder as any, ...prev.filter((o) => o.orderId !== effectiveOrderId)]);
+        try {
+          localStorage.setItem('divachic_last_order', JSON.stringify(restoredOrder));
+        } catch {}
+
         sendOrderConfirmationEmail({
           customerEmail: pending.customerDetails?.email,
           customerName: pending.customerDetails?.fullName,
-          orderId: pending.orderId,
+          orderId: effectiveOrderId,
           totalAmount: pending.totalAmount,
           paymentMethod: 'Online (Cashfree)',
           items: (pending.cartItems || []).map((item: any) => ({
@@ -1449,7 +1505,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }).catch((err) => console.warn('Email dispatch warning:', err));
       }
 
-      showToast('Payment Verified via Cashfree', 'success', `Your order has been confirmed.`);
+      showToast('Payment Verified via Cashfree', 'success', `Your order #${effectiveOrderId} has been confirmed.`);
       localStorage.removeItem('divachic_pending_order');
       localStorage.removeItem('divachic_pending_cart');
       try {

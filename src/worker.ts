@@ -29,8 +29,8 @@ export default {
       if (request.method === 'POST') {
         try {
           const body = (await request.json()) as any;
-          const appId = env.CASHFREE_APP_ID || env.VITE_CASHFREE_APP_ID || '';
-          const secretKey = env.CASHFREE_SECRET_KEY || '';
+          const appId = env.CASHFREE_APP_ID || env.VITE_CASHFREE_APP_ID;
+          const secretKey = env.CASHFREE_SECRET_KEY;
 
           if (!appId || !secretKey) {
             return new Response(

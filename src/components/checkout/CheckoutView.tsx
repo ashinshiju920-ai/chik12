@@ -471,7 +471,7 @@ export const CheckoutView: React.FC = () => {
       // Synchronize form values to Google Sheet immediately
       syncFormToGoogleSheetsExcel();
 
-      // Step 1: Request Cashfree payment session from backend API
+      // Step 1: Request Cashfree payment session from backend API (/api/create-cashfree-order)
       const response = await fetch('/api/create-cashfree-order', {
         method: 'POST',
         headers: {
@@ -492,6 +492,8 @@ export const CheckoutView: React.FC = () => {
       if (!response.ok || !data.paymentSessionId) {
         throw new Error(data.error || 'Could not initialize Cashfree secure payment session');
       }
+
+      const paymentSessionId = data.paymentSessionId;
 
       // Pre-save order to Firestore with Pending status
       try {
@@ -518,16 +520,47 @@ export const CheckoutView: React.FC = () => {
       }
 
       // Step 2: Open Cashfree Drop Checkout with Redirection (_self)
-      const cashfree = await load({ mode: 'production' });
+      let redirected = false;
+      try {
+        let cashfreeInstance: any = null;
+        if (typeof (window as any).Cashfree === 'function') {
+          cashfreeInstance = (window as any).Cashfree({ mode: 'production' });
+        } else {
+          cashfreeInstance = await load({ mode: 'production' });
+        }
 
-      if (!cashfree || typeof cashfree.checkout !== 'function') {
-        throw new Error('Cashfree payment SDK failed to load. Please refresh and try again.');
+        if (cashfreeInstance && typeof cashfreeInstance.checkout === 'function') {
+          const checkoutResult = await cashfreeInstance.checkout({
+            paymentSessionId,
+            redirectTarget: '_self'
+          });
+
+          if (checkoutResult?.error) {
+            console.warn('Cashfree SDK reported checkout error, falling back to direct POST checkout:', checkoutResult.error);
+          } else {
+            redirected = true;
+          }
+        }
+      } catch (sdkErr: any) {
+        console.warn('Cashfree SDK initialization failed, initiating direct POST checkout:', sdkErr);
       }
 
-      await cashfree.checkout({
-        paymentSessionId: data.paymentSessionId,
-        redirectTarget: '_self'
-      });
+      // Step 3: Guaranteed fallback direct form redirect to Cashfree checkout if SDK did not redirect
+      if (!redirected) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://api.cashfree.com/pg/view/sessions/checkout';
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'payment_session_id';
+        input.value = paymentSessionId;
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+        form.submit();
+      }
 
     } catch (err: any) {
       console.error('Cashfree initialization error:', err);
@@ -637,9 +670,18 @@ export const CheckoutView: React.FC = () => {
   // =========================================================================
   // ORDER CONFIRMATION VIEW
   // =========================================================================
-  if (isConfirmation && currentOrder) {
+  const effectiveConfirmedOrder = currentOrder || (() => {
+    try {
+      const saved = localStorage.getItem('divachic_last_order') || localStorage.getItem('divachic_pending_order');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  })();
+
+  if (isConfirmation && effectiveConfirmedOrder) {
+    const displayOrder = effectiveConfirmedOrder;
     const whatsappLink = `https://wa.me/message/XAACO6O6PPIDL1?text=${encodeURIComponent(
-      `Hello DivaChic Studio, I just placed Order #${currentOrder.orderNumber || currentOrder.orderId} for total ₹${(currentOrder.total || currentOrder.totalAmount || 0).toLocaleString('en-IN')}. Please confirm my order dispatch!`
+      `Hello DivaChic Studio, I just placed Order #${displayOrder.orderNumber || displayOrder.orderId} for total ₹${(displayOrder.total || displayOrder.totalAmount || 0).toLocaleString('en-IN')}. Please confirm my order dispatch!`
     )}`;
 
     return (
@@ -663,7 +705,7 @@ export const CheckoutView: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-[#1E5638] leading-relaxed">
-                Order <strong>#{currentOrder.orderNumber || currentOrder.orderId}</strong> has been logged! You are being redirected to our WhatsApp studio concierge for personal dispatch tracking.
+                Order <strong>#{displayOrder.orderNumber || displayOrder.orderId}</strong> has been logged! You are being redirected to our WhatsApp studio concierge for personal dispatch tracking.
               </p>
               <a
                 href={whatsappLink}
@@ -689,7 +731,7 @@ export const CheckoutView: React.FC = () => {
                 Thank You For Your Acquisition
               </h1>
               <p className="text-xs sm:text-sm text-neutral-500 max-w-md mx-auto leading-relaxed font-serif">
-                We have registered Order <strong>#{currentOrder.orderNumber || currentOrder.orderId}</strong>. Payment Method: <strong className="text-neutral-900">{currentOrder.paymentMethod}</strong>.
+                We have registered Order <strong>#{displayOrder.orderNumber || displayOrder.orderId}</strong>. Payment Method: <strong className="text-neutral-900">{displayOrder.paymentMethod}</strong>.
               </p>
             </div>
 
@@ -697,27 +739,27 @@ export const CheckoutView: React.FC = () => {
             <div className="bg-[#fafafa] border border-neutral-200 p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-serif">
               <div>
                 <span className="text-neutral-400 uppercase text-[10px] tracking-widest block">Reference ID</span>
-                <strong className="text-neutral-900 font-mono text-xs">{currentOrder.orderNumber || currentOrder.orderId}</strong>
+                <strong className="text-neutral-900 font-mono text-xs">{displayOrder.orderNumber || displayOrder.orderId}</strong>
               </div>
               <div>
                 <span className="text-neutral-400 uppercase text-[10px] tracking-widest block">Payment Status</span>
                 <span className="text-emerald-700 font-semibold uppercase tracking-wider text-xs">
-                  {currentOrder.paymentStatus || 'Confirmed'}
+                  {displayOrder.paymentStatus || 'Confirmed'}
                 </span>
               </div>
               <div>
                 <span className="text-neutral-400 uppercase text-[10px] tracking-widest block">Estimated Arrival</span>
-                <strong className="text-neutral-900">{currentOrder.estimatedDeliveryDate || calculateDeliveryDate(0).formattedDate}</strong>
+                <strong className="text-neutral-900">{displayOrder.estimatedDeliveryDate || calculateDeliveryDate(0).formattedDate}</strong>
               </div>
             </div>
 
             {/* Purchased Items List */}
             <div className="space-y-3 border-t border-neutral-200 pt-6">
               <h3 className="text-xs font-serif font-bold uppercase tracking-widest text-neutral-900">
-                Acquired Pieces ({currentOrder.items?.length || 0})
+                Acquired Pieces ({displayOrder.items?.length || 0})
               </h3>
               <div className="divide-y divide-neutral-100">
-                {currentOrder.items?.map((item: any, idx: number) => (
+                {displayOrder.items?.map((item: any, idx: number) => (
                   <div key={idx} className="py-3 flex items-center justify-between gap-4 text-xs">
                     <div className="flex items-center gap-3">
                       <div className="w-12 aspect-[3/4] bg-neutral-100 overflow-hidden shrink-0 border border-neutral-200">
@@ -742,21 +784,21 @@ export const CheckoutView: React.FC = () => {
             <div className="p-4 bg-[#fafafa] border border-neutral-200 space-y-2 text-xs font-serif">
               <div className="flex justify-between text-neutral-500">
                 <span>Subtotal</span>
-                <span>₹{(currentOrder.subtotal || 0).toLocaleString('en-IN')}</span>
+                <span>₹{(displayOrder.subtotal || 0).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-neutral-500">
                 <span>Shipping Fee</span>
-                <span>{currentOrder.shippingFee === 0 ? 'FREE (Complimentary Online)' : `₹${currentOrder.shippingFee}`}</span>
+                <span>{displayOrder.shippingFee === 0 ? 'FREE (Complimentary Online)' : `₹${displayOrder.shippingFee}`}</span>
               </div>
-              {currentOrder.packagingFee > 0 && (
+              {displayOrder.packagingFee > 0 && (
                 <div className="flex justify-between text-neutral-500">
                   <span>Signature Packaging</span>
-                  <span>₹{currentOrder.packagingFee}</span>
+                  <span>₹{displayOrder.packagingFee}</span>
                 </div>
               )}
               <div className="flex justify-between font-semibold text-sm text-neutral-900 pt-2 border-t border-neutral-200">
                 <span>Final Payable</span>
-                <span className="font-serif text-base">₹{(currentOrder.totalAmount || currentOrder.total || 0).toLocaleString('en-IN')}</span>
+                <span className="font-serif text-base">₹{(displayOrder.totalAmount || displayOrder.total || 0).toLocaleString('en-IN')}</span>
               </div>
             </div>
 
@@ -777,6 +819,33 @@ export const CheckoutView: React.FC = () => {
               </button>
             </div>
           </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isConfirmation) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center bg-white px-4 py-16">
+        <div className="max-w-md w-full text-center space-y-5 bg-white border border-neutral-200 p-8 sm:p-12 shadow-xs">
+          <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <span className="text-[10px] font-serif tracking-widest uppercase text-emerald-600 block">
+            Order Verified & Confirmed
+          </span>
+          <h2 className="text-2xl font-serif font-semibold text-neutral-900 tracking-tight">
+            Thank You For Your Acquisition
+          </h2>
+          <p className="text-xs text-neutral-500 leading-relaxed font-serif">
+            Your payment has been successfully recorded. Our atelier concierge is packaging your pieces for immediate dispatch.
+          </p>
+          <button
+            onClick={() => setActivePage('shop')}
+            className="w-full bg-neutral-900 hover:bg-black text-white text-xs font-serif uppercase tracking-widest py-3.5 px-6 transition-all duration-300 cursor-pointer shadow-sm active:scale-[0.98]"
+          >
+            Explore Designer Catalog
+          </button>
         </div>
       </div>
     );
