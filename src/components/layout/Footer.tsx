@@ -230,16 +230,11 @@ export const Footer: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+            <div className="flex items-center gap-2 flex-wrap justify-center">
               <span className="text-[11px] font-medium tracking-wide">SECURE PAYMENTS:</span>
-              <div className="px-2 py-1 bg-[#120F24] border border-[#2A2347] rounded-xs flex items-center h-6">
-                <img src="/cashfree-payments.png" alt="Cashfree Payments" className="h-3.5 w-auto object-contain" />
+              <div className="px-2.5 py-1 bg-[#120F24] border border-[#2A2347] rounded-xs flex items-center h-7 shadow-xs">
+                <img src="/cashfree-payments.png" alt="Cashfree Payments" className="h-4 w-auto object-contain" />
               </div>
-              <span className="px-2 py-0.5 bg-[#F5F3EF] border border-[#E5E0D8] rounded-xs font-semibold text-[10px] text-[#2C2C2C]">UPI</span>
-              <span className="px-2 py-0.5 bg-[#F5F3EF] border border-[#E5E0D8] rounded-xs font-semibold text-[10px] text-[#2C2C2C]">VISA</span>
-              <span className="px-2 py-0.5 bg-[#F5F3EF] border border-[#E5E0D8] rounded-xs font-semibold text-[10px] text-[#2C2C2C]">MC</span>
-              <span className="px-2 py-0.5 bg-[#F5F3EF] border border-[#E5E0D8] rounded-xs font-semibold text-[10px] text-[#2C2C2C]">RUPAY</span>
-              <span className="px-2 py-0.5 bg-[#F5F3EF] border border-[#E5E0D8] rounded-xs font-semibold text-[10px] text-[#2C2C2C]">NETBANKING</span>
             </div>
           </div>
         </div>

@@ -1414,15 +1414,6 @@ export const CheckoutView: React.FC = () => {
                 <p className="text-xs text-neutral-600 mt-2.5 font-serif leading-relaxed">
                   Official 100% RBI Authorized payment gateway partner. Instant checkout via UPI (Google Pay, PhonePe, Paytm), Credit & Debit Cards, NetBanking, and Wallets.
                 </p>
-
-                <div className="flex items-center gap-2 mt-3 text-xs flex-wrap">
-                  <span className="px-2 py-0.5 bg-white border border-neutral-200 font-mono font-bold text-[10px] text-[#5f259f]">UPI</span>
-                  <span className="px-2 py-0.5 bg-white border border-neutral-200 font-bold text-[10px] text-neutral-700">Google Pay</span>
-                  <span className="px-2 py-0.5 bg-white border border-neutral-200 font-bold text-[10px] text-[#5f259f]">PhonePe</span>
-                  <span className="px-2 py-0.5 bg-white border border-neutral-200 font-bold text-[10px] text-[#002e6e]">Paytm</span>
-                  <span className="px-2 py-0.5 bg-white border border-neutral-200 font-bold text-[10px] text-[#1a1f71]">Visa / Mastercard</span>
-                  <span className="px-2 py-0.5 bg-white border border-neutral-200 font-bold text-[10px] text-emerald-800">NetBanking</span>
-                </div>
               </div>
 
               {/* Option 2: Cash on Delivery (COD) */}
