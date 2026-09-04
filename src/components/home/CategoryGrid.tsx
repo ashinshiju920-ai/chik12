@@ -32,7 +32,7 @@ export const CategoryGrid: React.FC = () => {
             <Compass className="w-3.5 h-3.5 text-[#C85A32] dark:text-[#E87A54]" />
             <span>Curated Departments</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-serif font-medium text-[#1A1918] dark:text-[#F5F3EF] tracking-tight antialiased">
+          <h2 className="text-3xl sm:text-4xl font-serif font-medium font-black-white-border tracking-tight antialiased">
             Design-Forward Categories
           </h2>
         </div>

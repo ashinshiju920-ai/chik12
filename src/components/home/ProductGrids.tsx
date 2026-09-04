@@ -70,7 +70,7 @@ export const ProductGrids: React.FC = () => {
       {/* Section Heading & Tabs */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-[#EAE6DE] dark:border-[#282828] pb-6">
         <div>
-          <h2 className="text-3xl font-serif font-medium text-[#1A1918] dark:text-[#F5F3EF] tracking-tight text-center md:text-left antialiased">
+          <h2 className="text-3xl font-serif font-medium font-black-white-border tracking-tight text-center md:text-left antialiased">
             Curated Collections
           </h2>
           <p className="font-sans text-xs text-[#6E685F] dark:text-[#A8A29E] mt-1 text-center md:text-left">

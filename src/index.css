@@ -176,7 +176,7 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* Specific anti-fringing engine for Windows Chromium & OLED displays in dark mode */
+  /* Clean text rendering for Windows Chromium & OLED displays */
   html.dark h1,
   html.dark h2,
   html.dark h3,
@@ -192,7 +192,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    -webkit-text-stroke: 0.12px rgba(245, 243, 239, 0.08);
+  }
+
+  /* High-contrast luxury typography: Solid black font with crisp white border */
+  .font-black-white-border,
+  .text-black-white-border {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    -webkit-text-stroke: 1.25px #ffffff !important;
+    paint-order: stroke fill !important;
+    text-shadow: 0 0 1px #ffffff;
   }
 
   .product-title, .font-product {
