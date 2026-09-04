@@ -360,7 +360,7 @@ export const DEFAULT_SITE_BANNERS: SiteBanners = {
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
-const CURRENCY_RATES: Record<Currency, { symbol: string; rate: number; prefix: boolean }> = {
+export const CURRENCY_RATES: Record<Currency, { symbol: string; rate: number; prefix: boolean }> = {
   INR: { symbol: '₹', rate: 85.0, prefix: true },
   USD: { symbol: '$', rate: 1.0, prefix: true },
   EUR: { symbol: '€', rate: 0.92, prefix: false },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useStore } from '../../context/StoreContext';
+import { useStore, CURRENCY_RATES } from '../../context/StoreContext';
 import { DivaChikLogo } from '../common/DivaChikLogo';
 import { Address } from '../../types';
 import { db } from '../../firebase';
@@ -42,7 +42,9 @@ export const CheckoutView: React.FC = () => {
     activePage,
     setActivePage,
     showToast,
-    setIsAuthModalOpen
+    setIsAuthModalOpen,
+    currency,
+    formatPrice
   } = useStore();
 
   const isConfirmation = activePage === 'order-confirmation';
@@ -149,13 +151,16 @@ export const CheckoutView: React.FC = () => {
     }
   };
 
-  // Pricing Logic
+  // Pricing Logic with Currency Conversion (synchronized with Main Page, Product Views & Cart)
+  const currencyRate = CURRENCY_RATES[currency]?.rate || 85.0;
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const COD_SHIPPING_FEE = 150;
+  const subtotalConverted = Math.round(subtotal * currencyRate);
+  const COD_SHIPPING_FEE = currency === 'INR' ? 150 : Math.round(150 / 85 * currencyRate);
   const shippingFee = paymentMethod === 'ONLINE' ? 0 : COD_SHIPPING_FEE;
   const packagingFee = 0;
   const discountAmount = cartDiscount || 0;
-  const finalPayable = Math.max(0, subtotal + shippingFee + packagingFee - discountAmount);
+  const discountAmountConverted = Math.round(discountAmount * currencyRate);
+  const finalPayable = Math.max(0, subtotalConverted + shippingFee + packagingFee - discountAmountConverted);
 
   // Auto-redirect to WhatsApp upon order confirmation
   useEffect(() => {
@@ -290,7 +295,7 @@ export const CheckoutView: React.FC = () => {
         productId: item.productId,
         name: item.product.name,
         title: item.product.name,
-        price: Number(item.price),
+        price: Math.round(Number(item.price) * currencyRate),
         quantity: Number(item.quantity),
         image: item.product.images[0] || '',
         imageUrl: item.product.images[0] || '',
@@ -306,7 +311,7 @@ export const CheckoutView: React.FC = () => {
         customerName: customerDetails.fullName,
         email: customerDetails.email,
         items: cartItems,
-        subtotal,
+        subtotal: subtotalConverted,
         shippingFee: COD_SHIPPING_FEE,
         packagingFee,
         totalAmount: finalPayable,
@@ -432,7 +437,7 @@ export const CheckoutView: React.FC = () => {
         productId: item.productId,
         name: item.product.name,
         title: item.product.name,
-        price: Number(item.price),
+        price: Math.round(Number(item.price) * currencyRate),
         quantity: Number(item.quantity),
         image: item.product.images[0] || '',
         imageUrl: item.product.images[0] || '',
@@ -504,7 +509,7 @@ export const CheckoutView: React.FC = () => {
         customerName: customerDetails.fullName,
         email: customerDetails.email,
         items: cartItems,
-        subtotal,
+        subtotal: subtotalConverted,
         shippingFee: 0,
         packagingFee,
         totalAmount: finalPayable,
@@ -841,7 +846,7 @@ export const CheckoutView: React.FC = () => {
                   <div className="flex-1 min-w-0 text-xs font-serif">
                     <h5 className="font-medium text-neutral-900 truncate">{item.product.name}</h5>
                     <p className="text-[10px] text-neutral-500">Qty: {item.quantity} {item.selectedSize ? `• Size: ${item.selectedSize}` : ''}</p>
-                    <span className="font-bold text-neutral-900 mt-0.5 block">₹{(item.price * item.quantity).toLocaleString('en-IN')}</span>
+                    <span className="font-bold text-neutral-900 mt-0.5 block">{formatPrice(item.price * item.quantity)}</span>
                   </div>
                 </div>
               ))}
@@ -849,7 +854,7 @@ export const CheckoutView: React.FC = () => {
             <div className="space-y-1.5 text-xs font-serif pt-2 border-t border-neutral-100">
               <div className="flex justify-between text-neutral-600">
                 <span>Subtotal ({cartCount} items)</span>
-                <span>₹{subtotal.toLocaleString('en-IN')}</span>
+                <span>{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-neutral-600">
                 <span>Delivery</span>
@@ -864,7 +869,7 @@ export const CheckoutView: React.FC = () => {
               {discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-medium">
                   <span>Promo Discount</span>
-                  <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
+                  <span>-{formatPrice(discountAmount)}</span>
                 </div>
               )}
             </div>
@@ -1471,7 +1476,7 @@ export const CheckoutView: React.FC = () => {
                       Qty: {item.quantity} {item.selectedSize ? `• Size: ${item.selectedSize}` : ''}
                     </p>
                     <span className="font-bold text-neutral-900 mt-2 block">
-                      ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                      {formatPrice(item.price * item.quantity)}
                     </span>
                   </div>
                 </div>
@@ -1482,7 +1487,7 @@ export const CheckoutView: React.FC = () => {
             <div className="border-t border-neutral-200 pt-4 space-y-2.5 text-xs font-serif">
               <div className="flex justify-between text-neutral-600">
                 <span>Subtotal ({cartCount} items)</span>
-                <span className="text-neutral-900 font-medium">₹{subtotal.toLocaleString('en-IN')}</span>
+                <span className="text-neutral-900 font-medium">{formatPrice(subtotal)}</span>
               </div>
 
               <div className="flex justify-between text-neutral-600">
@@ -1512,7 +1517,7 @@ export const CheckoutView: React.FC = () => {
               {discountAmount > 0 && (
                 <div className="flex justify-between text-emerald-700 font-medium">
                   <span>Applied Promo ({appliedCoupon?.code || 'Voucher'})</span>
-                  <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
+                  <span>-{formatPrice(discountAmount)}</span>
                 </div>
               )}
 
