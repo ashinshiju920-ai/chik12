@@ -1,0 +1,2 @@
+# Ignore any stray or cached _redirects files in asset uploads
+_redirects
