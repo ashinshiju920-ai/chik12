@@ -199,6 +199,10 @@ export const CheckoutView: React.FC = () => {
       setErrorMessage('Please enter your last name.');
       return false;
     }
+    if (!email.trim() || !email.includes('@') || !email.includes('.')) {
+      setErrorMessage('Please enter a valid email address to receive order confirmation & tracking updates.');
+      return false;
+    }
     if (!phone.trim() || phone.replace(/\D/g, '').length < 10) {
       setErrorMessage('Please enter a valid 10-digit mobile phone number.');
       return false;
@@ -374,19 +378,23 @@ export const CheckoutView: React.FC = () => {
       clearCart();
       syncFormToGoogleSheetsExcel();
 
-      // Asynchronously trigger automated order confirmation email via Google Apps Script Webhook
-      sendOrderConfirmationEmail({
-        customerEmail: customerDetails.email,
-        customerName: customerDetails.fullName,
-        orderId,
-        totalAmount: finalPayable,
-        paymentMethod: 'Cash on Delivery (COD)',
-        items: cartItems.map((item) => ({
-          title: item.title,
-          quantity: item.quantity,
-          price: item.price
-        }))
-      });
+      // Trigger automated order confirmation email via Google Apps Script Webhook
+      try {
+        await sendOrderConfirmationEmail({
+          customerEmail: customerDetails.email,
+          customerName: customerDetails.fullName,
+          orderId,
+          totalAmount: finalPayable,
+          paymentMethod: 'Cash on Delivery (COD)',
+          items: cartItems.map((item) => ({
+            title: item.title,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        });
+      } catch (emailErr) {
+        console.warn('COD order confirmation email dispatch notice:', emailErr);
+      }
 
       showToast('Order Placed Successfully', 'success', `Cash on Delivery Order #${orderId} has been confirmed.`);
       setActivePage('order-confirmation');

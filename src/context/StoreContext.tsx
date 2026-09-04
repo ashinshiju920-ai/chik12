@@ -2144,6 +2144,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.log('[Google Sheets Web App Sync] Exception:', e);
     }
+
+    // Automated Order Confirmation Email (covers COD, Online, and Storefront orders)
+    try {
+      sendOrderConfirmationEmail({
+        customerEmail: newOrder.customer?.email || newOrder.email || 'customer@divachic.online',
+        customerName: newOrder.customerName || newOrder.shippingAddress?.fullName || 'Valued Client',
+        orderId: newOrder.orderNumber || newOrder.id,
+        totalAmount: newOrder.totalAmount || newOrder.total,
+        paymentMethod: newOrder.paymentMethod || 'Cash on Delivery (COD)',
+        items: (newOrder.items || []).map((item) => ({
+          title: item.name || (item as any).title || 'Product',
+          quantity: item.quantity,
+          price: item.price
+        }))
+      }).catch((err) => console.warn('[Email Confirmation Webhook] Notice:', err));
+    } catch (e) {
+      console.warn('[Email Confirmation Webhook] Exception:', e);
+    }
     
     cart.forEach((item) => {
       setProducts((prev) =>
